@@ -1,19 +1,17 @@
-struct Bus {
+mod bus;
+use bus::{Bus};
 
-}
+mod nes;
+use nes::{Rom};
 
-impl Bus {
-    fn read(&mut self, addr: u16) -> u8 {
-        todo!();
-    }
-
-    fn write(&mut self, addr: u16, val: u8) {
-        todo!();
-    }
-
-    fn clock(&mut self) {
-        todo!();
-    }
+enum StatusBit {
+    Carry = 1 << 0,
+    Zero = 1 << 1,
+    Interrupt = 1 << 2,
+    Decimal = 1 << 3,
+    Break = 1 << 4,
+    Overflow = 1 << 6,
+    Sign = 1 << 7,
 }
 
 pub struct Cpu {
@@ -27,6 +25,58 @@ pub struct Cpu {
 }
 
 impl Cpu {
+    fn get_bit(&self, bit: StatusBit) -> bool {
+        self.p & (bit as u8) != 0
+    }
+
+    fn update_bit(&mut self, bit: StatusBit, op: u8) {
+        match bit {
+            StatusBit::Zero => {
+                if op == 0 {
+                    self.p |= bit as u8;
+                } else {
+                    self.p &= !(bit as u8);
+                }
+            },
+            StatusBit::Sign => {
+                if (op & 0x80) != 0 {
+                    self.p |= bit as u8;
+                } else {
+                    self.p &= !(bit as u8);
+                }
+            },
+            StatusBit::Carry => {
+                if op != 0 {
+                    self.p |= bit as u8;
+                } else {
+                    self.p &= !(bit as u8);
+                }
+            },
+            StatusBit::Overflow => {
+                if op != 0 {
+                    self.p |= bit as u8;
+                } else {
+                    self.p &= !(bit as u8);
+                }
+            },
+            StatusBit::Interrupt => {
+                if op != 0 {
+                    self.p |= bit as u8;
+                } else {
+                    self.p &= !(bit as u8);
+                }
+            },
+            StatusBit::Decimal => {
+                if op != 0 {
+                    self.p |= bit as u8;
+                } else {
+                    self.p &= !(bit as u8);
+                }
+            },
+            _ => todo!(),
+        }
+    }
+
     fn fetch_u8(&mut self) -> u8 {
         let b = self.bus.read(self.pc);
         self.pc += 1;
@@ -59,14 +109,6 @@ impl Cpu {
         (self.pc >> 8) as u8
     }
 
-    fn pcl_set(&mut self, b: u8) {
-        self.pc = (self.pc & 0xff00) | (b as u16);
-    }
-
-    fn pch_set(&mut self, b: u8) {
-        self.pc = (self.pc & 0xff) | ((b as u16) << 8);
-    }
-
     fn brk(&mut self) {
         // 2
         self.fetch_u8();
@@ -91,7 +133,7 @@ impl Cpu {
         // 3
         self.stack_inc();
         // 4
-        self.p = self.stack_pull();
+        self.p = self.stack_pull() | (1 << 5);
         self.s += 1;
         // 5
         self.pc = self.stack_pull() as u16;
@@ -112,6 +154,7 @@ impl Cpu {
         self.pc |= (self.stack_pull() as u16) << 8; // pch
         // 6
         self.pc += 1;
+        self.bus.clock();
     }
     
     // pha, php
@@ -123,21 +166,45 @@ impl Cpu {
         self.s -= 1;
     }
     
+    fn php(&mut self) {
+        // 2
+        self.bus.read(self.pc);
+        // 3
+        self.stack_push(self.p | (StatusBit::Break as u8)); // or self.p
+        self.s -= 1;
+    }
+
     // pla, plp
     fn pla(&mut self) {
         // 2
         self.bus.read(self.pc);
         // 3
         self.s += 1;
+        self.bus.clock();
         // 4
         self.a = self.stack_pull();
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
     
+    fn plp(&mut self) {
+        // 2
+        self.bus.read(self.pc);
+        // 3
+        self.s += 1;
+        self.bus.clock();
+        // 4
+        self.p = self.stack_pull();
+        self.p &= !(StatusBit::Break as u8);
+        self.p |=  1 << 5;
+    }
+
     fn jsr(&mut self) {
         // 2
         let abl = self.fetch_u8();
         // 3
-        self.stack_dec();
+        // internal operation (predecrement S?)
+        self.bus.clock();
         // 4
         self.stack_push((self.pc >> 8) as u8);
         self.s -= 1;
@@ -151,8 +218,8 @@ impl Cpu {
     
     fn accumulator(&mut self, func: fn (&mut Cpu, u8) -> u8) {
         // 2
-        let val = self.bus.read(self.pc);
-        self.a = func(self, val);
+        self.bus.clock();
+        self.a = func(self, self.a);
     }
     
     fn implied(&mut self, func: fn(&mut Cpu)) {
@@ -186,9 +253,9 @@ impl Cpu {
         let val = self.bus.read(addr);
         func(self, val);
     }
-    /*
+
     // ASL, LSR, ROL, ROR, INC, DEC, SLO, SRE, RLA, RRA, ISB, DCP
-    fn absolute_read_modify_write() {
+    fn absolute_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8) {
         // 2
         let l = self.fetch_u8() as u16;
         // 3
@@ -203,7 +270,7 @@ impl Cpu {
         // 6
         self.bus.write(addr, val);
     }
-    */
+
     // STA, STX, STY, SAX
     fn absolute_write(&mut self, reg_val: u8) {
         // 2
@@ -223,9 +290,9 @@ impl Cpu {
         let val = self.bus.read(addr);
         func(self, val);
     }
-    /*
+    
     // ASL, LSR, ROL, ROR, INC, DEC, SLO, SRE, RLA, RRA, ISB, DCP
-    fn zero_page_read_modify_write() {
+    fn zero_page_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8) {
         // 2
         let addr = self.fetch_u8() as u16;
         // 3
@@ -237,7 +304,7 @@ impl Cpu {
         // 5
         self.bus.write(addr, val);
     }
-    */
+    
     // STA, STX, STY, SAX
     fn zero_page_write(&mut self, reg_val: u8) {
         // 2
@@ -257,16 +324,16 @@ impl Cpu {
         let val = self.bus.read(addr as u16);
         func(self, val);
     }
-    /*
+    
     // ASL, LSR, ROL, ROR, INC, DEC, SLO, SRE, RLA, RRA, ISB, DCP
-    fn zero_page_indexed_read_modify_write() {
+    fn zero_page_indexed_read_modify_write(&mut self, index: u8, func: fn (&mut Cpu, u8) -> u8) {
         // 2
         let addr = self.fetch_u8() as u16;
         // 3
         let addr = self.bus.read(addr);
-        let addr = addr.wrapping_add(self.x);
+        let addr = addr.wrapping_add(self.x) as u16;
         // 4
-        let val = self.bus.read(addr as u16)
+        let val = self.bus.read(addr);
         // 5
         // write the value back to effective address, and do the operation on it
         self.bus.write(addr, val);
@@ -274,7 +341,7 @@ impl Cpu {
         // 6
         self.bus.write(addr, val);
     }
-    */
+    
     // STA, STX, STY, SAX
     fn zero_page_indexed_write(&mut self, index: u8, reg_val: u8) {
         // 2
@@ -303,14 +370,14 @@ impl Cpu {
         let val = self.bus.read(addr);
         func(self, val);
     }
-    /*
+    
     // ASL, LSR, ROL, ROR, INC, DEC, SLO, SRE, RLA, RRA, ISB, DCP
-    fn absolute_indexed_read_modify_write() {
+    fn absolute_indexed_read_modify_write(&mut self, index: u8, func: fn (&mut Cpu, u8) -> u8) {
         // 2
-        let l = self.fetch_u8() as u16;
+        let l = self.fetch_u8();
         // 3
         let h = self.fetch_u8() as u16;
-        let l = l.wrapping_add(self.x);
+        let l = l.wrapping_add(self.x) as u16;
         // 4
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
@@ -326,7 +393,7 @@ impl Cpu {
         // 7
         self.bus.write(addr, val);
     }
-    */
+    
     // STA, STX, STY, SHA, SHX, SHY
     fn absolute_indexed_write(&mut self, index: u8, reg_val: u8) {
         // 2
@@ -339,7 +406,7 @@ impl Cpu {
         // at this time, i.e. it may be smaller by $100.
         let addr = (h << 8) | l;
         let val = self.bus.read(addr);
-        let val = func(self, val);
+        //let val = func(self, val);
         todo!(); // page boundary was crossed
         // 5
         self.bus.write(addr, val);
@@ -348,17 +415,25 @@ impl Cpu {
     // BCC, BCS, BNE, BEQ, BPL, BMI, BVC, BVS
     fn relative(&mut self, condition: bool) {
         // 2
-        let operand = self.fetch_u8();
-        // 3
-        self.bus.read(self.pc);
+        let operand = self.fetch_u8() as i8;
+        //self.bus.read(self.pc);
+        if condition {
+            // 3
+            self.bus.clock();
+            let new_pc = (self.pc as i32 + operand as i32) as u16;
 
-        if true {
-            self.pcl += operand;
+            if new_pc >> 8 != self.pc >> 8 {
+                self.bus.clock();
+            }
+
+            self.pc = new_pc;
+            //self.pcl += operand;
+            
         } else {
-            self.pc += 1;
+            //self.pc += 1;
         }
         // 4
-        todo!();
+        //todo!();
     }
     
     // LDA, ORA, EOR, AND, ADC, CMP, SBC, LAX
@@ -377,11 +452,11 @@ impl Cpu {
         let val = self.bus.read(addr);
         func(self, val);
     }
-    /*
+    
     // SLO, SRE, RLA, RRA, ISB, DCP
-    fn indexed_x_read_modify_write() {
+    fn indexed_x_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8) {
         // 2
-        let addr = self.fetch_u8();
+        let addr = self.fetch_u8() as u16;
         // 3
         let pointer = self.bus.read(addr);
         let pointer = pointer.wrapping_add(self.x);
@@ -399,7 +474,7 @@ impl Cpu {
         // 8
         self.bus.write(addr, val);
     }
-    */
+    
     // STA, SAX
     fn indexed_x_write(&mut self, reg_val: u8) {
         // 2
@@ -435,16 +510,16 @@ impl Cpu {
         // was invalid during cycle #5, i.e. page boundary was crossed.
         self.bus.read(pointer);
     }
-    /*
+    
     // SLO, SRE, RLA, RRA, ISB, DCP
-    fn indexed_y_read_modify_write()
+    fn indexed_y_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8)
     {
         // 2
-        let pointer_addr = self.fetch_u8();
+        let pointer_addr = self.fetch_u8() as u16;
         // 3
-        let pointer_l = self.bus.read(addr);
+        let pointer_l = self.bus.read(pointer_addr);
         // 4
-        let pointer_h = self.bus.read(addr) as u16;
+        let pointer_h = self.bus.read((pointer_addr + 1) & 0xff) as u16;
         let pointer_l = pointer_l.wrapping_add(self.y) as u16;
         // 5
         // The high byte of the effective address may be invalid
@@ -460,7 +535,7 @@ impl Cpu {
         // 8
         self.bus.write(pointer, val);
     }
-    */
+    
     // STA, SHA
     fn indexed_y_write(&mut self, reg_val: u8) {
         // 2
@@ -496,39 +571,90 @@ impl Cpu {
 
     //================================================================
     fn adc(&mut self, byte: u8) {
-        todo!();
+        let mut temp = (self.a as u16) + (byte as u16);
+
+        if self.get_bit(StatusBit::Carry) {
+            temp += 1;
+        }
+        // The overflow flag is set when
+        // the sign of the addends is the same and
+        // differs from the sign of the sum
+        self.update_bit(StatusBit::Overflow, !(self.a ^ byte) & (self.a ^ (temp as u8)) & 0x80);
+        self.update_bit(StatusBit::Carry, if temp > 0xFF {1} else {0});
+        self.a = temp as u8;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
 
     fn and(&mut self, byte: u8) {
-        todo!();
+        self.a &= byte;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
 
     fn cmp(&mut self, byte: u8) {
-        todo!();
+        let src = self.a.wrapping_sub(byte);
+        self.update_bit(StatusBit::Carry, if self.a >= byte {1} else {0});
+        self.update_bit(StatusBit::Sign, src);
+        self.update_bit(StatusBit::Zero, src);
+    }
+
+    fn cpy(&mut self, byte: u8) {
+        let src = self.y.wrapping_sub(byte);
+        self.update_bit(StatusBit::Carry, if self.y >= byte {1} else {0});
+        self.update_bit(StatusBit::Sign, src);
+        self.update_bit(StatusBit::Zero, src);
+    }
+
+    fn cpx(&mut self, byte: u8) {
+        let src = self.x.wrapping_sub(byte);
+        self.update_bit(StatusBit::Carry, if self.x >= byte {1} else {0});
+        self.update_bit(StatusBit::Sign, src);
+        self.update_bit(StatusBit::Zero, src);
     }
 
     fn eor(&mut self, byte: u8) {
-        todo!();
+        self.a ^= byte;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
 
     fn lda(&mut self, byte: u8) {
-        todo!();
+        self.a = byte;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
 
     fn ldy(&mut self, byte: u8) {
-        todo!();
+        self.y = byte;
+        self.update_bit(StatusBit::Sign, self.y);
+        self.update_bit(StatusBit::Zero, self.y);
     }
 
     fn ldx(&mut self, byte: u8) {
-        todo!();
+        self.x = byte;
+        self.update_bit(StatusBit::Sign, self.x);
+        self.update_bit(StatusBit::Zero, self.x);
     }
 
     fn ora(&mut self, byte: u8) {
-        todo!();
+        self.a |= byte;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
 
     fn sbc(&mut self, byte: u8) {
-        todo!();
+        let mut temp = (self.a as i32) - (byte as i32);
+        
+        if !self.get_bit(StatusBit::Carry) {
+            temp -= 1;
+        }
+
+        self.update_bit(StatusBit::Overflow, ((self.a ^ (temp as u8)) & 0x80) & ((self.a ^ byte) & 0x80));
+        self.update_bit(StatusBit::Carry, if self.a >= byte {1} else {0});
+        self.a = temp as u8;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
     }
 
     fn lax(&mut self, byte: u8) {
@@ -539,21 +665,195 @@ impl Cpu {
         todo!();
     }
 
-    fn nop(&mut self, byte: u8) {
-        todo!();
-    }
-
     fn bit(&mut self, byte: u8) {
-        todo!();
+        self.update_bit(StatusBit::Sign, byte);
+        self.update_bit(StatusBit::Overflow, 0x40 & byte);
+        self.update_bit(StatusBit::Zero, byte & self.a);
+    }
+    
+    fn skb(&mut self, _: u8) {
+        
     }
 
+    fn ign(&mut self, _: u8) {
+        
+    }
+
+    fn dex(&mut self) {
+        self.x = self.x.wrapping_sub(1);
+        self.update_bit(StatusBit::Sign, self.x);
+        self.update_bit(StatusBit::Zero, self.x);
+    }
+
+    fn dey(&mut self) {
+        self.y = self.y.wrapping_sub(1);
+        self.update_bit(StatusBit::Sign, self.y);
+        self.update_bit(StatusBit::Zero, self.y);
+    }
+
+    fn iny(&mut self) {
+        self.y = self.y.wrapping_add(1);
+        self.update_bit(StatusBit::Sign, self.y);
+        self.update_bit(StatusBit::Zero, self.y);
+    }
+
+    fn inx(&mut self) {
+        self.x = self.x.wrapping_add(1);
+        self.update_bit(StatusBit::Sign, self.x);
+        self.update_bit(StatusBit::Zero, self.x);
+    }
+
+    fn nop(&mut self) {
+        
+    }
+
+    fn clc(&mut self) {
+        self.update_bit(StatusBit::Carry, 0x00);
+    }
+
+    fn cld(&mut self) {
+        self.update_bit(StatusBit::Decimal, 0x00);
+    }
+
+    fn cli(&mut self) {
+        self.update_bit(StatusBit::Interrupt, 0x00);
+    }
+
+    fn clv(&mut self) {
+        self.update_bit(StatusBit::Overflow, 0x00);
+    }
+
+    fn sec(&mut self) {
+        self.update_bit(StatusBit::Carry, 0xff);
+    }
+
+    fn sed(&mut self) {
+        self.update_bit(StatusBit::Decimal, 0xff);
+    }
+
+    fn sei(&mut self) {
+        self.update_bit(StatusBit::Interrupt, 0xff);
+    }
+    
+    fn tax(&mut self) {
+        self.x = self.a;
+        self.update_bit(StatusBit::Sign, self.x);
+        self.update_bit(StatusBit::Zero, self.x);
+    }
+
+    fn tay(&mut self) {
+        self.y = self.a;
+        self.update_bit(StatusBit::Sign, self.y);
+        self.update_bit(StatusBit::Zero, self.y);
+    }
+
+    fn tsx(&mut self) {
+        self.x = self.s;
+        self.update_bit(StatusBit::Sign, self.x);
+        self.update_bit(StatusBit::Zero, self.x);
+    }
+    
+    fn txa(&mut self) {
+        self.a = self.x;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
+    }
+    
+    fn txs(&mut self) {
+        self.s = self.x;
+    }
+    
+    fn tya(&mut self) {
+        self.a = self.y;
+        self.update_bit(StatusBit::Sign, self.a);
+        self.update_bit(StatusBit::Zero, self.a);
+    }
     // write
     fn sta(&mut self, byte: u8) {
         todo!();
     }
+    // modify
+    fn dec(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn dcp(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn rra(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn ror(&mut self, byte: u8) -> u8 {
+        let mut res = byte >> 1;
+        
+        if self.get_bit(StatusBit::Carry) {
+            res |= 0x80;
+        }
+        
+        self.update_bit(StatusBit::Carry, byte & 0x01);
+        self.update_bit(StatusBit::Sign, res);
+        self.update_bit(StatusBit::Zero, res);
+        res
+    }
+
+    fn rol(&mut self, byte: u8) -> u8 {
+        let mut res = byte << 1;
+
+        if self.get_bit(StatusBit::Carry) {
+            res |= 0x01;
+        }
+        self.update_bit(StatusBit::Carry, byte & 0x80);
+        self.update_bit(StatusBit::Sign, res);
+        self.update_bit(StatusBit::Zero, res);
+        res
+    }
+
+    fn slo(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn sre(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn isb(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn asl(&mut self, byte: u8) -> u8 {
+        self.update_bit(StatusBit::Carry, byte & 0x80);
+        let byte = byte << 1;
+        self.update_bit(StatusBit::Sign, byte);
+        self.update_bit(StatusBit::Zero, byte);
+        byte
+    }
+
+    fn inc(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
+
+    fn lsr(&mut self, byte: u8) -> u8 {
+        self.update_bit(StatusBit::Carry, byte & 0x01);
+        let byte = byte >> 1;
+        self.update_bit(StatusBit::Sign, byte);
+        self.update_bit(StatusBit::Zero, byte);
+        byte
+    }
+
+    fn rla(&mut self, byte: u8) -> u8 {
+        todo!();
+    }
     //================================================================
     pub fn clock(&mut self) {
-        //print!("{:02X}  ", self.pc);
+        print!("{:02X}  ", self.pc);
+        print!("A:{:02X} ", self.a);
+        print!("X:{:02X} ", self.x);
+        print!("Y:{:02X} ", self.y);
+        print!("P:{:02X} ", self.p);
+        print!("SP:{:02X}  ", self.s);
+        println!("CYC:{}", self.bus.clk);
         //self.print_state();
 
         let instruction = self.fetch_u8();
@@ -578,40 +878,40 @@ impl Cpu {
             0x21 => self.indexed_x_read(Cpu::and), //and(Cpu::indirect_x),
             0x31 => self.indexed_y_read(Cpu::and), //and(Cpu::indirect_y),
             // ASL - Arithmetic Shift Left
-            0x0A => self.asl_acc(),
-            0x06 => self.asl(Cpu::zero_page),
-            0x16 => self.asl(Cpu::zero_page_x),
-            0x0E => self.asl(Cpu::absolute),
-            0x1E => self.asl(Cpu::absolute_x),
+            0x0A => self.accumulator(Cpu::asl), //asl_acc(),
+            0x06 => self.zero_page_read_modify_write(Cpu::asl), //asl(Cpu::zero_page),
+            0x16 => self.zero_page_indexed_read_modify_write(self.x, Cpu::asl), //asl(Cpu::zero_page_x),
+            0x0E => self.absolute_read_modify_write(Cpu::asl), //asl(Cpu::absolute),
+            0x1E => self.absolute_indexed_read_modify_write(self.x, Cpu::asl), //asl(Cpu::absolute_x),
             // BCC - Branch if Carry Clear
-            0x90 => self.bcc(Cpu::relative),
+            0x90 => self.relative(self.get_bit(StatusBit::Carry) == false), //bcc(Cpu::relative),
             // BCS - Branch if Carry Set
-            0xB0 => self.bcs(Cpu::relative),
+            0xB0 => self.relative(self.get_bit(StatusBit::Carry) == true),//self.bcs(Cpu::relative),
             // BEQ - Branch if Equal
-            0xF0 => self.beq(Cpu::relative),
+            0xF0 => self.relative(self.get_bit(StatusBit::Zero) == true),//self.beq(Cpu::relative),
             // BIT - Bit Test
             0x24 => self.zero_page_read(Cpu::bit), //bit(Cpu::zero_page),
             0x2C => self.absolute_read(Cpu::bit), //bit(Cpu::absolute),
             // BMI - Branch if Minus
-            0x30 => self.bmi(Cpu::relative),
+            0x30 => self.relative(self.get_bit(StatusBit::Sign) == true),//bmi(Cpu::relative),
             // BNE - Branch if Not Equal
-            0xD0 => self.bne(Cpu::relative),
+            0xD0 => self.relative(self.get_bit(StatusBit::Zero) == false),//self.bne(Cpu::relative),
             // BPL - Branch if Positive
-            0x10 => self.bpl(Cpu::relative),
+            0x10 => self.relative(self.get_bit(StatusBit::Sign) == false),//self.bpl(Cpu::relative),
             // BRK - Force Interrupt
             0x00 => self.brk(),
             // BVC - Branch if Overflow Clear
-            0x50 => self. bvc(Cpu::relative),
+            0x50 => self.relative(self.get_bit(StatusBit::Overflow) == false), //self. bvc(Cpu::relative),
             // BVS - Branch if Overflow Set
-            0x70 => self.bvs(Cpu::relative),
+            0x70 => self.relative(self.get_bit(StatusBit::Overflow) == true),//self.bvs(Cpu::relative),
             // CLC - Clear Carry Flag
-            0x18 => self.clc(),
+            0x18 => self.implied(Cpu::clc),//clc(),
             // CLD - Clear Decimal Mode
-            0xD8 => self.cld(),
+            0xD8 => self.implied(Cpu::cld),//cld(),
             // CLI - Clear Interrupt Disable
-            0x58 => self.cli(),
+            0x58 => self.implied(Cpu::cli),//cli(),
             // CLV - Clear Overflow Flag
-            0xB8 => self.clv(),
+            0xB8 => self.implied(Cpu::clv), //clv(),
             // CMP - Compare
             0xC9 => self.immediate(Cpu::cmp), //cmp(Cpu::immediate),
             0xC5 => self.zero_page_read(Cpu::cmp), //cmp(Cpu::zero_page),
@@ -622,30 +922,30 @@ impl Cpu {
             0xC1 => self.indexed_x_read(Cpu::cmp), //cmp(Cpu::indirect_x),
             0xD1 => self.indexed_y_read(Cpu::cmp), //cmp(Cpu::indirect_y),
             // CPX - Compare X Register
-            0xE0 => self.cpx(Cpu::immediate),
-            0xE4 => self.cpx(Cpu::zero_page),
-            0xEC => self.cpx(Cpu::absolute),
+            0xE0 => self.immediate(Cpu::cpx), //cpx(Cpu::immediate),
+            0xE4 => self.zero_page_read(Cpu::cpx), //cpx(Cpu::zero_page),
+            0xEC => self.absolute_read(Cpu::cpx),//cpx(Cpu::absolute),
             // CPY - Compare Y Register
-            0xC0 => self.cpy(Cpu::immediate),
-            0xC4 => self.cpy(Cpu::zero_page),
-            0xCC => self.cpy(Cpu::absolute),
+            0xC0 => self.immediate(Cpu::cpy), //cpy(Cpu::immediate),
+            0xC4 => self.zero_page_read(Cpu::cpy), //cpy(Cpu::zero_page),
+            0xCC => self.absolute_read(Cpu::cpy), //cpy(Cpu::absolute),
             // DCP
-            0xC3 => self.dcp(Cpu::indirect_x), // DCP (d,X) ($C3 dd; 8 cycles)
-            0xC7 => self.dcp(Cpu::zero_page), // DCP d ($C7 dd; 5 cycles)
-            0xCF => self.dcp(Cpu::absolute), // DCP a ($CF aa aa; 6 cycles)
-            0xD3 => self.dcp(Cpu::indirect_y), // DCP (d),Y ($D3 dd; 8 cycles)
-            0xD7 => self.dcp(Cpu::zero_page_x), // DCP d,X ($D7 dd; 6 cycles)
-            0xDB => self.dcp(Cpu::absolute_y), // DCP a,Y ($DB aa aa; 7 cycles)
-            0xDF => self.dcp(Cpu::absolute_x), // DCP a,X ($DF aa aa; 7 cycles)
+            0xC3 => self.indexed_x_read_modify_write(Cpu::dcp), //dcp(Cpu::indirect_x), // DCP (d,X) ($C3 dd; 8 cycles)
+            0xC7 => self.zero_page_read_modify_write(Cpu::dcp), //dcp(Cpu::zero_page), // DCP d ($C7 dd; 5 cycles)
+            0xCF => self.absolute_read_modify_write(Cpu::dcp), //dcp(Cpu::absolute), // DCP a ($CF aa aa; 6 cycles)
+            0xD3 => self.indexed_y_read_modify_write(Cpu::dcp), //dcp(Cpu::indirect_y), // DCP (d),Y ($D3 dd; 8 cycles)
+            0xD7 => self.zero_page_indexed_read_modify_write(self.x, Cpu::dcp), //dcp(Cpu::zero_page_x), // DCP d,X ($D7 dd; 6 cycles)
+            0xDB => self.absolute_indexed_read_modify_write(self.y, Cpu::dcp), //dcp(Cpu::absolute_y), // DCP a,Y ($DB aa aa; 7 cycles)
+            0xDF => self.absolute_indexed_read_modify_write(self.x, Cpu::dcp), //dcp(Cpu::absolute_x), // DCP a,X ($DF aa aa; 7 cycles)
             // DEC - Decrement Memory
-            0xC6 => self.dec(Cpu::zero_page),
-            0xD6 => self.dec(Cpu::zero_page_x),
-            0xCE => self.dec(Cpu::absolute),
-            0xDE => self.dec(Cpu::absolute_x),
+            0xC6 => self.zero_page_read_modify_write(Cpu::dec), //dec(Cpu::zero_page),
+            0xD6 => self.zero_page_indexed_read_modify_write(self.x, Cpu::dec),//dec(Cpu::zero_page_x),
+            0xCE => self.absolute_read_modify_write(Cpu::dec), //dec(Cpu::absolute),
+            0xDE => self.absolute_indexed_read_modify_write(self.x, Cpu::dec), //dec(Cpu::absolute_x),
             // DEX - Decrement X Register
-            0xCA => self.dex(),
+            0xCA => self.implied(Cpu::dex),//dex(),
             // DEY - Decrement Y Register
-            0x88 => self.dey(),
+            0x88 => self.implied(Cpu::dey), //dey(),
             // EOR - Exclusive OR
             0x49 => self.immediate(Cpu::eor), //eor(Cpu::immediate),
             0x45 => self.zero_page_read(Cpu::eor), //eor(Cpu::zero_page),
@@ -656,27 +956,27 @@ impl Cpu {
             0x41 => self.indexed_x_read(Cpu::eor), //eor(Cpu::indirect_x),
             0x51 => self.indexed_y_read(Cpu::eor), //eor(Cpu::indirect_y),
             // IGN
-            0x04 | 0x44 | 0x64 => self.ign(Cpu::zero_page),
-            0x0C => self.ign(Cpu::absolute),
-            0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.ign(Cpu::zero_page_x),
-            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.ign(Cpu::absolute_x),
+            0x04 | 0x44 | 0x64 => self.zero_page_read(Cpu::ign), //ign(Cpu::zero_page),
+            0x0C => self.absolute_read(Cpu::ign), //ign(Cpu::absolute),
+            0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.zero_page_indexed_read(self.x, Cpu::ign), //ign(Cpu::zero_page_x),
+            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.absolute_indexed_read(self.x, Cpu::ign), //ign(Cpu::absolute_x),
             // INC - Increment Memory
-            0xE6 => self.inc(Cpu::zero_page),
-            0xF6 => self.inc(Cpu::zero_page_x),
-            0xEE => self.inc(Cpu::absolute),
-            0xFE => self.inc(Cpu::absolute_x),
+            0xE6 => self.zero_page_read_modify_write(Cpu::inc), //inc(Cpu::zero_page),
+            0xF6 => self.zero_page_indexed_read_modify_write(self.x, Cpu::inc), //inc(Cpu::zero_page_x),
+            0xEE => self.absolute_read_modify_write(Cpu::inc), //inc(Cpu::absolute),
+            0xFE => self.absolute_indexed_read_modify_write(self.x, Cpu::inc), //inc(Cpu::absolute_x),
             // INX - Increment X Register
-            0xE8 => self.inx(),
+            0xE8 => self.implied(Cpu::inx), //inx(),
             // INY - Increment Y Register
-            0xC8 => self.iny(),
+            0xC8 => self.implied(Cpu::iny), //iny(),
             // ISC
-            0xE3 => self.isc(Cpu::indirect_x), // ISC (d,X) ($E3 dd; 8 cycles)
-            0xE7 => self.isc(Cpu::zero_page), // ISC d ($E7 dd; 5 cycles)
-            0xEF => self.isc(Cpu::absolute),  // ISC a ($EF aa aa; 6 cycles)
-            0xF3 => self.isc(Cpu::indirect_y), // ISC (d),Y ($F3 dd; 8 cycles)
-            0xF7 => self.isc(Cpu::zero_page_x), // ISC d,X ($F7 dd; 6 cycles)
-            0xFB => self.isc(Cpu::absolute_y), // ISC a,Y ($FB aa aa; 7 cycles)
-            0xFF => self.isc(Cpu::absolute_x), // ISC a,X ($FF aa aa; 7 cycles)
+            0xE3 => self.indexed_x_read_modify_write(Cpu::isb), //isc(Cpu::indirect_x), // ISC (d,X) ($E3 dd; 8 cycles)
+            0xE7 => self.zero_page_read_modify_write(Cpu::isb), //isc(Cpu::zero_page), // ISC d ($E7 dd; 5 cycles)
+            0xEF => self.absolute_read_modify_write(Cpu::isb), //isc(Cpu::absolute),  // ISC a ($EF aa aa; 6 cycles)
+            0xF3 => self.indexed_y_read_modify_write(Cpu::isb), //isc(Cpu::indirect_y), // ISC (d),Y ($F3 dd; 8 cycles)
+            0xF7 => self.zero_page_indexed_read_modify_write(self.x, Cpu::isb), //isc(Cpu::zero_page_x), // ISC d,X ($F7 dd; 6 cycles)
+            0xFB => self.absolute_indexed_read_modify_write(self.y, Cpu::isb), //isc(Cpu::absolute_y), // ISC a,Y ($FB aa aa; 7 cycles)
+            0xFF => self.absolute_indexed_read_modify_write(self.x, Cpu::isb), //isc(Cpu::absolute_x), // ISC a,X ($FF aa aa; 7 cycles)
             // JMP - Jump
             0x4C => self.absolute_jmp(), //jmp(Cpu::absolute),
             0x6C => self.indirect_jmp(), //jmp(Cpu::indirect),
@@ -711,13 +1011,13 @@ impl Cpu {
             0xAC => self.absolute_read(Cpu::ldy), //ldy(Cpu::absolute),
             0xBC => self.absolute_indexed_read(self.x, Cpu::ldy), //ldy(Cpu::absolute_x),
             // LSR - Logical Shift Right
-            0x4A => self.lsr_acc(),
-            0x46 => self.lsr(Cpu::zero_page),
-            0x56 => self.lsr(Cpu::zero_page_x),
-            0x4E => self.lsr(Cpu::absolute),
-            0x5E => self.lsr(Cpu::absolute_x),
+            0x4A => self.accumulator(Cpu::lsr), //lsr_acc(),
+            0x46 => self.zero_page_read_modify_write(Cpu::lsr), //lsr(Cpu::zero_page),
+            0x56 => self.zero_page_indexed_read_modify_write(self.x, Cpu::lsr), //lsr(Cpu::zero_page_x),
+            0x4E => self.absolute_read_modify_write(Cpu::lsr), //lsr(Cpu::absolute),
+            0x5E => self.absolute_indexed_read_modify_write(self.x, Cpu::lsr), //lsr(Cpu::absolute_x),
             // NOP - No Operation
-            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => self.nop(),
+            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => self.implied(Cpu::nop), //nop(),
             // ORA - Logical Inclusive OR
             0x09 => self.immediate(Cpu::ora), //ora(Cpu::immediate),
             0x05 => self.zero_page_read(Cpu::ora), //ora(Cpu::zero_page),
@@ -736,33 +1036,33 @@ impl Cpu {
             // PLP - Pull Processor Status
             0x28 => self.plp(),
             // RLA
-            0x23 => self.rla(Cpu::indirect_x), // RLA (d,X) ($23 dd; 8 cycles)
-            0x27 => self.rla(Cpu::zero_page), // RLA d ($27 dd; 5 cycles)
-            0x2F => self.rla(Cpu::absolute), // RLA a ($2F aa aa; 6 cycles)
-            0x33 => self.rla(Cpu::indirect_y), // RLA (d),Y ($33 dd; 8 cycles)
-            0x37 => self.rla(Cpu::zero_page_x), // RLA d,X ($37 dd; 6 cycles)
-            0x3B => self.rla(Cpu::absolute_y), // RLA a,Y ($3B aa aa; 7 cycles)
-            0x3F => self.rla(Cpu::absolute_x), // RLA a,X ($3F aa aa; 7 cycles)
+            0x23 => self.indexed_x_read_modify_write(Cpu::rla), //rla(Cpu::indirect_x), // RLA (d,X) ($23 dd; 8 cycles)
+            0x27 => self.zero_page_read_modify_write(Cpu::rla), //rla(Cpu::zero_page), // RLA d ($27 dd; 5 cycles)
+            0x2F => self.absolute_read_modify_write(Cpu::rla), //rla(Cpu::absolute), // RLA a ($2F aa aa; 6 cycles)
+            0x33 => self.indexed_y_read_modify_write(Cpu::rla), //rla(Cpu::indirect_y), // RLA (d),Y ($33 dd; 8 cycles)
+            0x37 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rla), //rla(Cpu::zero_page_x), // RLA d,X ($37 dd; 6 cycles)
+            0x3B => self.absolute_indexed_read_modify_write(self.y, Cpu::rla), //rla(Cpu::absolute_y), // RLA a,Y ($3B aa aa; 7 cycles)
+            0x3F => self.absolute_indexed_read_modify_write(self.x, Cpu::rla), //rla(Cpu::absolute_x), // RLA a,X ($3F aa aa; 7 cycles)
             // ROL - Rotate Left
-            0x2A => self.rol_acc(),
-            0x26 => self.rol(Cpu::zero_page),
-            0x36 => self.rol(Cpu::zero_page_x),
-            0x2E => self.rol(Cpu::absolute),
-            0x3E => self.rol(Cpu::absolute_x),
+            0x2A => self.accumulator(Cpu::rol), //rol_acc(),
+            0x26 => self.zero_page_read_modify_write(Cpu::rol), //rol(Cpu::zero_page),
+            0x36 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rol), //rol(Cpu::zero_page_x),
+            0x2E => self.absolute_read_modify_write(Cpu::rol), //rol(Cpu::absolute),
+            0x3E => self.absolute_indexed_read_modify_write(self.x, Cpu::rol), //rol(Cpu::absolute_x),
             // ROR - Rotate Right
-            0x6A => self.ror_acc(),
-            0x66 => self.ror(Cpu::zero_page),
-            0x76 => self.ror(Cpu::zero_page_x),
-            0x6E => self.ror(Cpu::absolute),
-            0x7E => self.ror(Cpu::absolute_x),
+            0x6A => self.accumulator(Cpu::ror), //ror_acc(),
+            0x66 => self.zero_page_read_modify_write(Cpu::ror), //ror(Cpu::zero_page),
+            0x76 => self.zero_page_indexed_read_modify_write(self.x, Cpu::ror), //ror(Cpu::zero_page_x),
+            0x6E => self.absolute_read_modify_write(Cpu::ror), //ror(Cpu::absolute),
+            0x7E => self.absolute_indexed_read_modify_write(self.x, Cpu::ror), //ror(Cpu::absolute_x),
             // RRA
-            0x63 => self.rra(Cpu::indirect_x), // RRA (d,X) ($63 dd; 8 cycles)
-            0x67 => self.rra(Cpu::zero_page), // RRA d ($67 dd; 5 cycles)
-            0x6F => self.rra(Cpu::absolute), // RRA a ($6F aa aa; 6 cycles)
-            0x73 => self.rra(Cpu::indirect_y), // RRA (d),Y ($73 dd; 8 cycles)
-            0x77 => self.rra(Cpu::zero_page_x), // RRA d,X ($77 dd; 6 cycles)
-            0x7B => self.rra(Cpu::absolute_y), // RRA a,Y ($7B aa aa; 7 cycles)
-            0x7F => self.rra(Cpu::absolute_x), // RRA a,X ($7F aa aa; 7 cycles)
+            0x63 => self.indexed_x_read_modify_write(Cpu::rra), //rra(Cpu::indirect_x), // RRA (d,X) ($63 dd; 8 cycles)
+            0x67 => self.zero_page_read_modify_write(Cpu::rra), //rra(Cpu::zero_page), // RRA d ($67 dd; 5 cycles)
+            0x6F => self.absolute_read_modify_write(Cpu::rra), //rra(Cpu::absolute), // RRA a ($6F aa aa; 6 cycles)
+            0x73 => self.indexed_y_read_modify_write(Cpu::rra), //rra(Cpu::indirect_y), // RRA (d),Y ($73 dd; 8 cycles)
+            0x77 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rra), //rra(Cpu::zero_page_x), // RRA d,X ($77 dd; 6 cycles)
+            0x7B => self.absolute_indexed_read_modify_write(self.y, Cpu::rra), //rra(Cpu::absolute_y), // RRA a,Y ($7B aa aa; 7 cycles)
+            0x7F => self.absolute_indexed_read_modify_write(self.x, Cpu::rra), //rra(Cpu::absolute_x), // RRA a,X ($7F aa aa; 7 cycles)
             // RTI - Return from Interrupt
             0x40 => self.rti(),
             // RTS - Return from Subroutine
@@ -782,27 +1082,27 @@ impl Cpu {
             0xE1 => self.indexed_x_read(Cpu::sbc), //sbc(Cpu::indirect_x),
             0xF1 => self.indexed_y_read(Cpu::sbc), //sbc(Cpu::indirect_y),
             // SEC - Set Carry Flag
-            0x38 => self.sec(),
+            0x38 => self.implied(Cpu::sec), //sec(),
             // SED - Set Decimal Flag
-            0xF8 => self.sed(),
+            0xF8 => self.implied(Cpu::sed), //sed(),
             // SEI - Set Interrupt Disable
-            0x78 => self.sei(),
+            0x78 => self.implied(Cpu::sei), //sei(),
             // SLO
-            0x03 => self.slo(Cpu::indirect_x), // SLO (d,X) ($03 dd; 8 cycles)
-            0x07 => self.slo(Cpu::zero_page), // SLO d ($07 dd; 5 cycles)
-            0x0F => self.slo(Cpu::absolute), // SLO a ($0F aa aa; 6 cycles)
-            0x13 => self.slo(Cpu::indirect_y), // SLO (d),Y ($13 dd; 8 cycles)
-            0x17 => self.slo(Cpu::zero_page_x), // SLO d,X ($17 dd; 6 cycles)
-            0x1B => self.slo(Cpu::absolute_y), // SLO a,Y ($1B aa aa; 7 cycles)
-            0x1F => self.slo(Cpu::absolute_x), // SLO a,X ($1F aa aa; 7 cycles)
+            0x03 => self.indexed_x_read_modify_write(Cpu::slo), //slo(Cpu::indirect_x), // SLO (d,X) ($03 dd; 8 cycles)
+            0x07 => self.zero_page_read_modify_write(Cpu::slo), //slo(Cpu::zero_page), // SLO d ($07 dd; 5 cycles)
+            0x0F => self.absolute_read_modify_write(Cpu::slo), //slo(Cpu::absolute), // SLO a ($0F aa aa; 6 cycles)
+            0x13 => self.indexed_y_read_modify_write(Cpu::slo), //slo(Cpu::indirect_y), // SLO (d),Y ($13 dd; 8 cycles)
+            0x17 => self.zero_page_indexed_read_modify_write(self.x, Cpu::slo), //slo(Cpu::zero_page_x), // SLO d,X ($17 dd; 6 cycles)
+            0x1B => self.absolute_indexed_read_modify_write(self.y, Cpu::slo), //slo(Cpu::absolute_y), // SLO a,Y ($1B aa aa; 7 cycles)
+            0x1F => self.absolute_indexed_read_modify_write(self.x, Cpu::slo), //slo(Cpu::absolute_x), // SLO a,X ($1F aa aa; 7 cycles)
             // SRE
-            0x43 => self.sre(Cpu::indirect_x), // SRE (d,X) ($43 dd; 8 cycles)
-            0x47 => self.sre(Cpu::zero_page), // SRE d ($47 dd; 5 cycles)
-            0x4f => self.sre(Cpu::absolute), // SRE a ($4F aa aa; 6 cycles)
-            0x53 => self.sre(Cpu::indirect_y), // SRE (d),Y ($53 dd; 8 cycles)
-            0x57 => self.sre(Cpu::zero_page_x), // SRE d,X ($57 dd; 6 cycles)
-            0x5B => self.sre(Cpu::absolute_y), // SRE a,Y ($5B aa aa; 7 cycles)
-            0x5F => self.sre(Cpu::absolute_x), // SRE a,X ($5F aa aa; 7 cycles)
+            0x43 => self.indexed_x_read_modify_write(Cpu::sre), //sre(Cpu::indirect_x), // SRE (d,X) ($43 dd; 8 cycles)
+            0x47 => self.zero_page_read_modify_write(Cpu::sre), //sre(Cpu::zero_page), // SRE d ($47 dd; 5 cycles)
+            0x4f => self.absolute_read_modify_write(Cpu::sre), //sre(Cpu::absolute), // SRE a ($4F aa aa; 6 cycles)
+            0x53 => self.indexed_y_read_modify_write(Cpu::sre), //sre(Cpu::indirect_y), // SRE (d),Y ($53 dd; 8 cycles)
+            0x57 => self.zero_page_indexed_read_modify_write(self.x, Cpu::sre), //sre(Cpu::zero_page_x), // SRE d,X ($57 dd; 6 cycles)
+            0x5B => self.absolute_indexed_read_modify_write(self.y, Cpu::sre), //sre(Cpu::absolute_y), // SRE a,Y ($5B aa aa; 7 cycles)
+            0x5F => self.absolute_indexed_read_modify_write(self.x, Cpu::sre), //sre(Cpu::absolute_x), // SRE a,X ($5F aa aa; 7 cycles)
             // STA - Store Accumulator
             0x85 => self.zero_page_write(self.a), //sta(Cpu::zero_page),
             0x95 => self.zero_page_indexed_write(self.x, self.a), //sta(Cpu::zero_page_x),
@@ -820,23 +1120,43 @@ impl Cpu {
             0x94 => self.zero_page_indexed_write(self.x, self.y), //sty(Cpu::zero_page_x),
             0x8C => self.absolute_write(self.y), //sty(Cpu::absolute),
             // SKB
-            0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.skb(Cpu::immediate),
+            0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.immediate(Cpu::skb),//skb(Cpu::immediate),
             // TAX - Transfer Accumulator to X
-            0xAA => self.tax(),
+            0xAA => self.implied(Cpu::tax), //tax(),
             // TAY - Transfer Accumulator to Y
-            0xA8 => self.tay(),
+            0xA8 => self.implied(Cpu::tay), // tay(),
             // TSX - Transfer Stack Pointer to X
-            0xBA => self.tsx(),
+            0xBA => self.implied(Cpu::tsx), //tsx(),
             // TXA - Transfer X to Accumulator
-            0x8A => self.txa(),
+            0x8A => self.implied(Cpu::txa), //txa(),
             // TXS - Transfer X to Stack Pointer
-            0x9A => self.txs(),
+            0x9A => self.implied(Cpu::txs), //txs(),
             // TYA - Transfer Y to Accumulator
-            0x98 => self.tya(),
+            0x98 => self.implied(Cpu::tya), //tya(),
+            _ => {},
+        }
+    }
+
+    pub fn new(bus: Bus) -> Self {
+        let start_addr = 0xC000;//bus.read_u16(0xFFFC);
+        //print!("start: 0x{:x}", start_addr);
+        Self {
+            a: 0,
+            pc: start_addr,
+            s: 0xFD,
+            x: 0,
+            y: 0,
+            p: 0x24,
+            bus,
         }
     }
 }
 
 fn main() {
+    let bus = Bus::new();
+    let mut cpu = Cpu::new(bus);
 
+    for _ in 0..8991 {
+        cpu.clock();
+    }
 }
