@@ -2,7 +2,7 @@ mod bus;
 use bus::{Bus};
 
 mod nes;
-use nes::{Rom};
+//use nes::{Rom};
 
 enum StatusBit {
     Carry = 1 << 0,
@@ -93,11 +93,6 @@ impl Cpu {
 
     fn stack_inc(&mut self) {
         self.s += 1;
-        self.bus.clock();
-    }
-
-    fn stack_dec(&mut self) {
-        self.s -= 1;
         self.bus.clock();
     }
 
@@ -266,7 +261,7 @@ impl Cpu {
         // 5 
         // write the value back to effective address, and do the operation on it
         self.bus.write(addr, val);
-        todo!(); //do the operation on 'val'
+        let val = func(self, val);
         // 6
         self.bus.write(addr, val);
     }
@@ -300,7 +295,8 @@ impl Cpu {
         // 4
         // write the value back to effective address, and do the operation on it
         self.bus.write(addr, val);
-        todo!(); //do the operation on 'val'
+        //do the operation on 'val'
+        let val = func(self, val);
         // 5
         self.bus.write(addr, val);
     }
@@ -316,28 +312,29 @@ impl Cpu {
     // LDA, LDX, LDY, EOR, AND, ORA, ADC, SBC, CMP, BIT, LAX, NOP
     fn zero_page_indexed_read(&mut self, index: u8, func: fn (&mut Cpu, u8)) {
         // 2
-        let addr = self.fetch_u8() as u16;
+        let addr = self.fetch_u8();
         // 3
-        let addr = self.bus.read(addr);
-        let addr = addr.wrapping_add(index);
+        self.bus.read(addr as u16);
+        let addr = addr.wrapping_add(index) as u16;
         // 4
-        let val = self.bus.read(addr as u16);
+        let val = self.bus.read(addr);
         func(self, val);
     }
     
     // ASL, LSR, ROL, ROR, INC, DEC, SLO, SRE, RLA, RRA, ISB, DCP
     fn zero_page_indexed_read_modify_write(&mut self, index: u8, func: fn (&mut Cpu, u8) -> u8) {
         // 2
-        let addr = self.fetch_u8() as u16;
+        let addr = self.fetch_u8();
         // 3
-        let addr = self.bus.read(addr);
-        let addr = addr.wrapping_add(self.x) as u16;
+        self.bus.read(addr as u16);
+        let addr = addr.wrapping_add(index) as u16;
         // 4
         let val = self.bus.read(addr);
         // 5
         // write the value back to effective address, and do the operation on it
         self.bus.write(addr, val);
-        todo!(); //do the operation on 'val'
+        //do the operation on 'val'
+        let val = func(self, val);
         // 6
         self.bus.write(addr, val);
     }
@@ -345,9 +342,9 @@ impl Cpu {
     // STA, STX, STY, SAX
     fn zero_page_indexed_write(&mut self, index: u8, reg_val: u8) {
         // 2
-        let addr = self.fetch_u8() as u16;
+        let addr = self.fetch_u8();// as u16;
         // 3
-        let addr = self.bus.read(addr);
+        self.bus.read(addr as u16);
         let addr = addr.wrapping_add(index);
         // 4
         self.bus.write(addr as u16, reg_val);
@@ -358,38 +355,49 @@ impl Cpu {
         // 2
         let l = self.fetch_u8();
         // 3
-        let h = self.fetch_u8() as u16;
+        let mut h = self.fetch_u8() as u16;
+        let overflow = (l as u16 + index as u16) > 0xff;
         let l = l.wrapping_add(index) as u16;
         // 4
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
-        let addr = (h << 8) | l;
-        let val = self.bus.read(addr);
-        todo!(); // page boundary was crossed
+        if overflow {
+            // page boundary was crossed
+            h += 1;
+            self.bus.clock();
+        }
         // 5
+        let addr = (h << 8) | l;
         let val = self.bus.read(addr);
         func(self, val);
     }
-    
+
     // ASL, LSR, ROL, ROR, INC, DEC, SLO, SRE, RLA, RRA, ISB, DCP
     fn absolute_indexed_read_modify_write(&mut self, index: u8, func: fn (&mut Cpu, u8) -> u8) {
         // 2
         let l = self.fetch_u8();
         // 3
-        let h = self.fetch_u8() as u16;
-        let l = l.wrapping_add(self.x) as u16;
+        let mut h = self.fetch_u8() as u16;
+        let overflow = (l as u16 + index as u16) > 0xff;
+        let l = l.wrapping_add(index) as u16;
         // 4
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
+        self.bus.read((h << 8) | l);
+
+        if overflow {
+            // page boundary was crossed
+            h += 1;
+        }
+
         let addr = (h << 8) | l;
-        let val = self.bus.read(addr);
-        todo!(); // page boundary was crossed
         // 5
         let val = self.bus.read(addr);
         // 6
         // write the value back to effective address, and do the operation on it
         self.bus.write(addr, val);
-        todo!(); //do the operation on 'val'
+         //do the operation on 'val'
+        let val = func(self, val);
         // 7
         self.bus.write(addr, val);
     }
@@ -399,17 +407,20 @@ impl Cpu {
         // 2
         let l = self.fetch_u8();
         // 3
-        let h = self.fetch_u8() as u16;
+        let mut h = self.fetch_u8() as u16;
+        let overflow = (l as u16 + index as u16) > 0xff;
         let l = l.wrapping_add(index)  as u16;
         // 4
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
-        let addr = (h << 8) | l;
-        let val = self.bus.read(addr);
-        //let val = func(self, val);
-        todo!(); // page boundary was crossed
+        self.bus.read((h << 8) | l);
+
+        if overflow {
+            h += 1;
+        }
         // 5
-        self.bus.write(addr, val);
+        let addr = (h << 8) | l;
+        self.bus.write(addr, reg_val);
     }
     
     // BCC, BCS, BNE, BEQ, BPL, BMI, BVC, BVS
@@ -439,14 +450,14 @@ impl Cpu {
     // LDA, ORA, EOR, AND, ADC, CMP, SBC, LAX
     fn indexed_x_read(&mut self, func: fn (&mut Cpu, u8)) {
         // 2
-        let addr = self.fetch_u8() as u16;
+        let addr = self.fetch_u8();
         // 3
-        let pointer = self.bus.read(addr);
-        let pointer = pointer.wrapping_add(self.x);
+        self.bus.read(addr as u16);
+        let addr = addr.wrapping_add(self.x);
         // 4
-        let l = self.bus.read(pointer as u16) as u16;
+        let l = self.bus.read(addr as u16) as u16;
         // 5
-        let h = self.bus.read(pointer.wrapping_add(1) as u16) as u16;
+        let h = self.bus.read(addr.wrapping_add(1) as u16) as u16;
         // 6
         let addr = (h << 8) | l;
         let val = self.bus.read(addr);
@@ -456,21 +467,21 @@ impl Cpu {
     // SLO, SRE, RLA, RRA, ISB, DCP
     fn indexed_x_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8) {
         // 2
-        let addr = self.fetch_u8() as u16;
+        let addr = self.fetch_u8();
         // 3
-        let pointer = self.bus.read(addr);
-        let pointer = pointer.wrapping_add(self.x);
+        self.bus.read(addr as u16);
+        let addr = addr.wrapping_add(self.x);
         // 4
-        let l = self.bus.read(pointer as u16) as u16;
+        let l = self.bus.read(addr as u16) as u16;
         // 5
-        let h = self.bus.read(pointer.wrapping_add(1) as u16) as u16;
+        let h = self.bus.read(addr.wrapping_add(1) as u16) as u16;
         // 6
         let addr = (h << 8) | l;
         let val = self.bus.read(addr);
         // 7
         // write the value back to effective address, and do the operation on it
         self.bus.write(addr, val);
-        todo!(); //do the operation on 'val'
+        let val = func(self, val);
         // 8
         self.bus.write(addr, val);
     }
@@ -478,14 +489,14 @@ impl Cpu {
     // STA, SAX
     fn indexed_x_write(&mut self, reg_val: u8) {
         // 2
-        let addr = self.fetch_u8() as u16;
+        let addr = self.fetch_u8();
         // 3
-        let pointer = self.bus.read(addr);
-        let pointer = pointer.wrapping_add(self.x);
+        let addr = addr.wrapping_add(self.x);
+        self.bus.clock();
         // 4
-        let l = self.bus.read(pointer as u16) as u16;
+        let l = self.bus.read(addr as u16) as u16;
         // 5
-        let h = self.bus.read(pointer.wrapping_add(1) as u16) as u16;
+        let h = self.bus.read(addr.wrapping_add(1) as u16) as u16;
         // 6
         let addr = (h << 8) | l;
         self.bus.write(addr, reg_val);
@@ -493,45 +504,56 @@ impl Cpu {
 
     // LDA, EOR, AND, ORA, ADC, SBC, CMP
     fn indexed_y_read(&mut self, func: fn (&mut Cpu, u8)) {
-        // 2
-        let pointer_addr = self.fetch_u8() as u16;
-        // 3
-        let pointer_l = self.bus.read(pointer_addr);
+        // 2 fetch pointer address, increment PC
+        let pointer_addr = self.fetch_u8();
+        // 3 fetch effective address low
+        let pointer_l = self.bus.read(pointer_addr as  u16);
         // 4
-        let pointer_h = self.bus.read((pointer_addr + 1) & 0xff) as u16;
+        let mut pointer_h = self.bus.read(pointer_addr.wrapping_add(1) as u16) as u16;
+        let overflow = (pointer_l as u16 + self.y as u16) > 0xff;
         let pointer_l = pointer_l.wrapping_add(self.y) as u16;
         // 5
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
+        if overflow {
+            pointer_h += 1;
+            self.bus.clock();
+        }
+
         let pointer = (pointer_h << 8) | pointer_l;
-        let val = self.bus.read(pointer);
         // 6
         // + This cycle will be executed only if the effective address
         // was invalid during cycle #5, i.e. page boundary was crossed.
-        self.bus.read(pointer);
+        let val = self.bus.read(pointer);
+        func(self, val);
     }
     
     // SLO, SRE, RLA, RRA, ISB, DCP
-    fn indexed_y_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8)
-    {
+    fn indexed_y_read_modify_write(&mut self, func: fn (&mut Cpu, u8) -> u8) {
         // 2
         let pointer_addr = self.fetch_u8() as u16;
         // 3
         let pointer_l = self.bus.read(pointer_addr);
         // 4
-        let pointer_h = self.bus.read((pointer_addr + 1) & 0xff) as u16;
+        let mut pointer_h = self.bus.read((pointer_addr + 1) & 0xff) as u16;
+        let overflow = (pointer_l as u16 + self.y as u16) > 0xff;
         let pointer_l = pointer_l.wrapping_add(self.y) as u16;
         // 5
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
+        self.bus.read((pointer_h << 8) | pointer_l);
+
+        if overflow {
+            pointer_h += 1;
+        }
+
         let pointer = (pointer_h << 8) | pointer_l;
-        let val = self.bus.read(pointer);
         // 6
         let val = self.bus.read(pointer);
         // 7
         self.bus.write(pointer, val);
-        todo!();
         // do the operation on it
+        let val = func(self, val);
         // 8
         self.bus.write(pointer, val);
     }
@@ -549,7 +571,7 @@ impl Cpu {
         // The high byte of the effective address may be invalid
         // at this time, i.e. it may be smaller by $100.
         let pointer = (pointer_h << 8) | pointer_l;
-        let val = self.bus.read(pointer);
+        self.bus.read(pointer);
         // 6
         self.bus.write(pointer, reg_val);
     }
@@ -558,14 +580,13 @@ impl Cpu {
         // 2
         let l = self.fetch_u8() as u16;
         // 3
-        let h = self.fetch_u8() as u16;
+        let h = (self.fetch_u8() as u16) << 8;
         // 4
-        let addr = (h << 8) | l;
-        let low = self.bus.read(addr);
+        let low = self.bus.read(h | l);
         // 5
         // The PCH will always be fetched from the same page
         // than PCL, i.e. page boundary crossing is not handled.
-        self.pc = (self.bus.read(addr + 1) as u16) << 8; // pch
+        self.pc = (self.bus.read(h | ((l + 1) & 0xff)) as u16) << 8; // pch
         self.pc |= low as u16;
     }
 
@@ -658,13 +679,14 @@ impl Cpu {
     }
 
     fn lax(&mut self, byte: u8) {
-        todo!();
+        self.lda(byte);
+        self.tax();
     }
-
-    fn sax(&mut self, byte: u8) {
-        todo!();
+    /*
+    fn sax(&mut self) -> u8 {
+        self.a & self.x
     }
-
+    */
     fn bit(&mut self, byte: u8) {
         self.update_bit(StatusBit::Sign, byte);
         self.update_bit(StatusBit::Overflow, 0x40 & byte);
@@ -769,20 +791,31 @@ impl Cpu {
         self.update_bit(StatusBit::Zero, self.a);
     }
     // write
+    /*
     fn sta(&mut self, byte: u8) {
         todo!();
     }
+    */
     // modify
     fn dec(&mut self, byte: u8) -> u8 {
-        todo!();
+        let byte = byte.wrapping_sub(1);
+        self.update_bit(StatusBit::Sign, byte);
+        self.update_bit(StatusBit::Zero, byte);
+        byte
     }
 
     fn dcp(&mut self, byte: u8) -> u8 {
-        todo!();
+        // Equivalent to DEC value then CMP value, except supporting more addressing modes.
+        let byte = self.dec(byte);
+        self.cmp(byte);
+        byte
     }
 
     fn rra(&mut self, byte: u8) -> u8 {
-        todo!();
+        // Equivalent to ROR value then ADC value, except supporting more addressing modes
+        let byte = self.ror(byte);
+        self.adc(byte);
+        byte
     }
 
     fn ror(&mut self, byte: u8) -> u8 {
@@ -811,15 +844,24 @@ impl Cpu {
     }
 
     fn slo(&mut self, byte: u8) -> u8 {
-        todo!();
+        // Equivalent to ASL value then ORA value, except supporting more addressing modes.
+        let byte = self.asl(byte);
+        self.ora(byte);
+        byte
     }
 
     fn sre(&mut self, byte: u8) -> u8 {
-        todo!();
+        // Equivalent to LSR value then EOR value, except supporting more addressing modes
+        let byte = self.lsr(byte);
+        self.eor(byte);
+        byte
     }
 
     fn isb(&mut self, byte: u8) -> u8 {
-        todo!();
+        // Equivalent to INC value then SBC value, except supporting more addressing modes.
+        let byte = self.inc(byte);
+        self.sbc(byte);
+        byte
     }
 
     fn asl(&mut self, byte: u8) -> u8 {
@@ -831,7 +873,10 @@ impl Cpu {
     }
 
     fn inc(&mut self, byte: u8) -> u8 {
-        todo!();
+        let byte = byte.wrapping_add(1);
+        self.update_bit(StatusBit::Sign, byte);
+        self.update_bit(StatusBit::Zero, byte);
+        byte
     }
 
     fn lsr(&mut self, byte: u8) -> u8 {
@@ -843,7 +888,10 @@ impl Cpu {
     }
 
     fn rla(&mut self, byte: u8) -> u8 {
-        todo!();
+        // Equivalent to ROL value then AND value, except supporting more addressing modes
+        let  byte = self.rol(byte);
+        self.and(byte);
+        byte
     }
     //================================================================
     pub fn clock(&mut self) {
@@ -1068,10 +1116,10 @@ impl Cpu {
             // RTS - Return from Subroutine
             0x60 => self.rts(),
             // SAX
-            0x83 => self.indexed_y_read(Cpu::sax), //sax(Cpu::indirect_x), // SAX (d,X) ($83 dd; 6 cycles)
-            0x87 => self.zero_page_read(Cpu::sax), //sax(Cpu::zero_page), // SAX d ($87 dd; 3 cycles)
-            0x8F => self.absolute_read(Cpu::sax), //sax(Cpu::absolute), // SAX a ($8F aa aa; 4 cycles)
-            0x97 => self.zero_page_indexed_read(self.y, Cpu::sax), //sax(Cpu::zero_page_y), // SAX d,Y ($97 dd; 4 cycles)
+            0x83 => self.indexed_x_write(self.a & self.x), //sax(Cpu::indirect_x), // SAX (d,X) ($83 dd; 6 cycles)
+            0x87 => self.zero_page_write(self.a & self.x), //sax(Cpu::zero_page), // SAX d ($87 dd; 3 cycles)
+            0x8F => self.absolute_write(self.a & self.x), //sax(Cpu::absolute), // SAX a ($8F aa aa; 4 cycles)
+            0x97 => self.zero_page_indexed_write(self.y, self.a & self.x), //sax(Cpu::zero_page_y), // SAX d,Y ($97 dd; 4 cycles)
             // SBC - Subtract with Carry
             0xE9 | 0xEB => self.immediate(Cpu::sbc), //sbc(Cpu::immediate),
             0xE5 => self.zero_page_read(Cpu::sbc), //sbc(Cpu::zero_page),
