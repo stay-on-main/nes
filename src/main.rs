@@ -905,176 +905,176 @@ impl Cpu {
         //self.print_state();
 
         let instruction = self.fetch_u8();
-        //print!("read instruction {:2x}", instruction);
+
         match instruction {
             // ADC - Add with Carry
-            0x69 => self.immediate(Cpu::adc), //  self.adc(Cpu::immediate),
+            0x69 => self.immediate(Cpu::adc),
             0x65 => self.zero_page_read(Cpu::adc),
-            0x75 => self.zero_page_indexed_read(self.x, Cpu::adc), //adc(Cpu::zero_page_x),
-            0x6D => self.absolute_read(Cpu::adc), //adc(Cpu::absolute),
-            0x7D => self.absolute_indexed_read(self.x, Cpu::adc), // adc(Cpu::absolute_x),
-            0x79 => self.absolute_indexed_read(self.y, Cpu::adc), // adc(Cpu::absolute_y),
-            0x61 => self.indexed_x_read(Cpu::adc), //adc(Cpu::indirect_x),
-            0x71 => self.indexed_y_read(Cpu::adc), // adc(Cpu::indirect_y),
+            0x75 => self.zero_page_indexed_read(self.x, Cpu::adc),
+            0x6D => self.absolute_read(Cpu::adc),
+            0x7D => self.absolute_indexed_read(self.x, Cpu::adc),
+            0x79 => self.absolute_indexed_read(self.y, Cpu::adc),
+            0x61 => self.indexed_x_read(Cpu::adc),
+            0x71 => self.indexed_y_read(Cpu::adc),
             // AND - Logical AND
-            0x29 => self.immediate(Cpu::and), //and(Cpu::immediate),
-            0x25 => self.zero_page_read(Cpu::and), //and(Cpu::zero_page),
-            0x35 => self.zero_page_indexed_read(self.x, Cpu::and), //and(Cpu::zero_page_x),
-            0x2D => self.absolute_read(Cpu::and), //and(Cpu::absolute),
-            0x3D => self.absolute_indexed_read(self.x, Cpu::and), //and(Cpu::absolute_x),
-            0x39 => self.absolute_indexed_read(self.y, Cpu::and), //and(Cpu::absolute_y),
-            0x21 => self.indexed_x_read(Cpu::and), //and(Cpu::indirect_x),
-            0x31 => self.indexed_y_read(Cpu::and), //and(Cpu::indirect_y),
+            0x29 => self.immediate(Cpu::and),
+            0x25 => self.zero_page_read(Cpu::and),
+            0x35 => self.zero_page_indexed_read(self.x, Cpu::and),
+            0x2D => self.absolute_read(Cpu::and),
+            0x3D => self.absolute_indexed_read(self.x, Cpu::and),
+            0x39 => self.absolute_indexed_read(self.y, Cpu::and),
+            0x21 => self.indexed_x_read(Cpu::and),
+            0x31 => self.indexed_y_read(Cpu::and),
             // ASL - Arithmetic Shift Left
-            0x0A => self.accumulator(Cpu::asl), //asl_acc(),
-            0x06 => self.zero_page_read_modify_write(Cpu::asl), //asl(Cpu::zero_page),
-            0x16 => self.zero_page_indexed_read_modify_write(self.x, Cpu::asl), //asl(Cpu::zero_page_x),
-            0x0E => self.absolute_read_modify_write(Cpu::asl), //asl(Cpu::absolute),
-            0x1E => self.absolute_indexed_read_modify_write(self.x, Cpu::asl), //asl(Cpu::absolute_x),
+            0x0A => self.accumulator(Cpu::asl),
+            0x06 => self.zero_page_read_modify_write(Cpu::asl),
+            0x16 => self.zero_page_indexed_read_modify_write(self.x, Cpu::asl),
+            0x0E => self.absolute_read_modify_write(Cpu::asl),
+            0x1E => self.absolute_indexed_read_modify_write(self.x, Cpu::asl),
             // BCC - Branch if Carry Clear
-            0x90 => self.relative(self.get_bit(StatusBit::Carry) == false), //bcc(Cpu::relative),
+            0x90 => self.relative(self.get_bit(StatusBit::Carry) == false),
             // BCS - Branch if Carry Set
-            0xB0 => self.relative(self.get_bit(StatusBit::Carry) == true),//self.bcs(Cpu::relative),
+            0xB0 => self.relative(self.get_bit(StatusBit::Carry) == true),
             // BEQ - Branch if Equal
-            0xF0 => self.relative(self.get_bit(StatusBit::Zero) == true),//self.beq(Cpu::relative),
+            0xF0 => self.relative(self.get_bit(StatusBit::Zero) == true),
             // BIT - Bit Test
-            0x24 => self.zero_page_read(Cpu::bit), //bit(Cpu::zero_page),
-            0x2C => self.absolute_read(Cpu::bit), //bit(Cpu::absolute),
+            0x24 => self.zero_page_read(Cpu::bit),
+            0x2C => self.absolute_read(Cpu::bit),
             // BMI - Branch if Minus
-            0x30 => self.relative(self.get_bit(StatusBit::Sign) == true),//bmi(Cpu::relative),
+            0x30 => self.relative(self.get_bit(StatusBit::Sign) == true),
             // BNE - Branch if Not Equal
-            0xD0 => self.relative(self.get_bit(StatusBit::Zero) == false),//self.bne(Cpu::relative),
+            0xD0 => self.relative(self.get_bit(StatusBit::Zero) == false),
             // BPL - Branch if Positive
-            0x10 => self.relative(self.get_bit(StatusBit::Sign) == false),//self.bpl(Cpu::relative),
+            0x10 => self.relative(self.get_bit(StatusBit::Sign) == false),
             // BRK - Force Interrupt
             0x00 => self.brk(),
             // BVC - Branch if Overflow Clear
-            0x50 => self.relative(self.get_bit(StatusBit::Overflow) == false), //self. bvc(Cpu::relative),
+            0x50 => self.relative(self.get_bit(StatusBit::Overflow) == false),
             // BVS - Branch if Overflow Set
-            0x70 => self.relative(self.get_bit(StatusBit::Overflow) == true),//self.bvs(Cpu::relative),
+            0x70 => self.relative(self.get_bit(StatusBit::Overflow) == true),
             // CLC - Clear Carry Flag
-            0x18 => self.implied(Cpu::clc),//clc(),
+            0x18 => self.implied(Cpu::clc),
             // CLD - Clear Decimal Mode
-            0xD8 => self.implied(Cpu::cld),//cld(),
+            0xD8 => self.implied(Cpu::cld),
             // CLI - Clear Interrupt Disable
-            0x58 => self.implied(Cpu::cli),//cli(),
+            0x58 => self.implied(Cpu::cli),
             // CLV - Clear Overflow Flag
-            0xB8 => self.implied(Cpu::clv), //clv(),
+            0xB8 => self.implied(Cpu::clv),
             // CMP - Compare
-            0xC9 => self.immediate(Cpu::cmp), //cmp(Cpu::immediate),
-            0xC5 => self.zero_page_read(Cpu::cmp), //cmp(Cpu::zero_page),
-            0xD5 => self.zero_page_indexed_read(self.x, Cpu::cmp), //cmp(Cpu::zero_page_x),
-            0xCD => self.absolute_read(Cpu::cmp), //cmp(Cpu::absolute),
-            0xDD => self.absolute_indexed_read(self.x, Cpu::cmp), //cmp(Cpu::absolute_x),
-            0xD9 => self.absolute_indexed_read(self.y, Cpu::cmp), //cmp(Cpu::absolute_y),
-            0xC1 => self.indexed_x_read(Cpu::cmp), //cmp(Cpu::indirect_x),
-            0xD1 => self.indexed_y_read(Cpu::cmp), //cmp(Cpu::indirect_y),
+            0xC9 => self.immediate(Cpu::cmp),
+            0xC5 => self.zero_page_read(Cpu::cmp),
+            0xD5 => self.zero_page_indexed_read(self.x, Cpu::cmp),
+            0xCD => self.absolute_read(Cpu::cmp),
+            0xDD => self.absolute_indexed_read(self.x, Cpu::cmp),
+            0xD9 => self.absolute_indexed_read(self.y, Cpu::cmp),
+            0xC1 => self.indexed_x_read(Cpu::cmp),
+            0xD1 => self.indexed_y_read(Cpu::cmp),
             // CPX - Compare X Register
-            0xE0 => self.immediate(Cpu::cpx), //cpx(Cpu::immediate),
-            0xE4 => self.zero_page_read(Cpu::cpx), //cpx(Cpu::zero_page),
-            0xEC => self.absolute_read(Cpu::cpx),//cpx(Cpu::absolute),
+            0xE0 => self.immediate(Cpu::cpx),
+            0xE4 => self.zero_page_read(Cpu::cpx),
+            0xEC => self.absolute_read(Cpu::cpx),
             // CPY - Compare Y Register
-            0xC0 => self.immediate(Cpu::cpy), //cpy(Cpu::immediate),
-            0xC4 => self.zero_page_read(Cpu::cpy), //cpy(Cpu::zero_page),
-            0xCC => self.absolute_read(Cpu::cpy), //cpy(Cpu::absolute),
+            0xC0 => self.immediate(Cpu::cpy),
+            0xC4 => self.zero_page_read(Cpu::cpy),
+            0xCC => self.absolute_read(Cpu::cpy),
             // DCP
-            0xC3 => self.indexed_x_read_modify_write(Cpu::dcp), //dcp(Cpu::indirect_x), // DCP (d,X) ($C3 dd; 8 cycles)
-            0xC7 => self.zero_page_read_modify_write(Cpu::dcp), //dcp(Cpu::zero_page), // DCP d ($C7 dd; 5 cycles)
-            0xCF => self.absolute_read_modify_write(Cpu::dcp), //dcp(Cpu::absolute), // DCP a ($CF aa aa; 6 cycles)
-            0xD3 => self.indexed_y_read_modify_write(Cpu::dcp), //dcp(Cpu::indirect_y), // DCP (d),Y ($D3 dd; 8 cycles)
-            0xD7 => self.zero_page_indexed_read_modify_write(self.x, Cpu::dcp), //dcp(Cpu::zero_page_x), // DCP d,X ($D7 dd; 6 cycles)
-            0xDB => self.absolute_indexed_read_modify_write(self.y, Cpu::dcp), //dcp(Cpu::absolute_y), // DCP a,Y ($DB aa aa; 7 cycles)
-            0xDF => self.absolute_indexed_read_modify_write(self.x, Cpu::dcp), //dcp(Cpu::absolute_x), // DCP a,X ($DF aa aa; 7 cycles)
+            0xC3 => self.indexed_x_read_modify_write(Cpu::dcp),
+            0xC7 => self.zero_page_read_modify_write(Cpu::dcp),
+            0xCF => self.absolute_read_modify_write(Cpu::dcp),
+            0xD3 => self.indexed_y_read_modify_write(Cpu::dcp),
+            0xD7 => self.zero_page_indexed_read_modify_write(self.x, Cpu::dcp),
+            0xDB => self.absolute_indexed_read_modify_write(self.y, Cpu::dcp),
+            0xDF => self.absolute_indexed_read_modify_write(self.x, Cpu::dcp),
             // DEC - Decrement Memory
-            0xC6 => self.zero_page_read_modify_write(Cpu::dec), //dec(Cpu::zero_page),
-            0xD6 => self.zero_page_indexed_read_modify_write(self.x, Cpu::dec),//dec(Cpu::zero_page_x),
-            0xCE => self.absolute_read_modify_write(Cpu::dec), //dec(Cpu::absolute),
-            0xDE => self.absolute_indexed_read_modify_write(self.x, Cpu::dec), //dec(Cpu::absolute_x),
+            0xC6 => self.zero_page_read_modify_write(Cpu::dec),
+            0xD6 => self.zero_page_indexed_read_modify_write(self.x, Cpu::dec),
+            0xCE => self.absolute_read_modify_write(Cpu::dec),
+            0xDE => self.absolute_indexed_read_modify_write(self.x, Cpu::dec),
             // DEX - Decrement X Register
-            0xCA => self.implied(Cpu::dex),//dex(),
+            0xCA => self.implied(Cpu::dex),
             // DEY - Decrement Y Register
-            0x88 => self.implied(Cpu::dey), //dey(),
+            0x88 => self.implied(Cpu::dey),
             // EOR - Exclusive OR
-            0x49 => self.immediate(Cpu::eor), //eor(Cpu::immediate),
-            0x45 => self.zero_page_read(Cpu::eor), //eor(Cpu::zero_page),
-            0x55 => self.zero_page_indexed_read(self.x, Cpu::eor), //eor(Cpu::zero_page_x),
-            0x4D => self.absolute_read(Cpu::eor), //eor(Cpu::absolute),
-            0x5D => self.absolute_indexed_read(self.x, Cpu::eor), //eor(Cpu::absolute_x),
-            0x59 => self.absolute_indexed_read(self.y, Cpu::eor),  //eor(Cpu::absolute_y),
-            0x41 => self.indexed_x_read(Cpu::eor), //eor(Cpu::indirect_x),
-            0x51 => self.indexed_y_read(Cpu::eor), //eor(Cpu::indirect_y),
+            0x49 => self.immediate(Cpu::eor),
+            0x45 => self.zero_page_read(Cpu::eor),
+            0x55 => self.zero_page_indexed_read(self.x, Cpu::eor),
+            0x4D => self.absolute_read(Cpu::eor),
+            0x5D => self.absolute_indexed_read(self.x, Cpu::eor),
+            0x59 => self.absolute_indexed_read(self.y, Cpu::eor),
+            0x41 => self.indexed_x_read(Cpu::eor),
+            0x51 => self.indexed_y_read(Cpu::eor),
             // IGN
-            0x04 | 0x44 | 0x64 => self.zero_page_read(Cpu::ign), //ign(Cpu::zero_page),
-            0x0C => self.absolute_read(Cpu::ign), //ign(Cpu::absolute),
-            0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.zero_page_indexed_read(self.x, Cpu::ign), //ign(Cpu::zero_page_x),
-            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.absolute_indexed_read(self.x, Cpu::ign), //ign(Cpu::absolute_x),
+            0x04 | 0x44 | 0x64 => self.zero_page_read(Cpu::ign),
+            0x0C => self.absolute_read(Cpu::ign),
+            0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.zero_page_indexed_read(self.x, Cpu::ign),
+            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.absolute_indexed_read(self.x, Cpu::ign),
             // INC - Increment Memory
-            0xE6 => self.zero_page_read_modify_write(Cpu::inc), //inc(Cpu::zero_page),
-            0xF6 => self.zero_page_indexed_read_modify_write(self.x, Cpu::inc), //inc(Cpu::zero_page_x),
-            0xEE => self.absolute_read_modify_write(Cpu::inc), //inc(Cpu::absolute),
-            0xFE => self.absolute_indexed_read_modify_write(self.x, Cpu::inc), //inc(Cpu::absolute_x),
+            0xE6 => self.zero_page_read_modify_write(Cpu::inc),
+            0xF6 => self.zero_page_indexed_read_modify_write(self.x, Cpu::inc),
+            0xEE => self.absolute_read_modify_write(Cpu::inc),
+            0xFE => self.absolute_indexed_read_modify_write(self.x, Cpu::inc),
             // INX - Increment X Register
-            0xE8 => self.implied(Cpu::inx), //inx(),
+            0xE8 => self.implied(Cpu::inx),
             // INY - Increment Y Register
-            0xC8 => self.implied(Cpu::iny), //iny(),
+            0xC8 => self.implied(Cpu::iny),
             // ISC
-            0xE3 => self.indexed_x_read_modify_write(Cpu::isb), //isc(Cpu::indirect_x), // ISC (d,X) ($E3 dd; 8 cycles)
-            0xE7 => self.zero_page_read_modify_write(Cpu::isb), //isc(Cpu::zero_page), // ISC d ($E7 dd; 5 cycles)
-            0xEF => self.absolute_read_modify_write(Cpu::isb), //isc(Cpu::absolute),  // ISC a ($EF aa aa; 6 cycles)
-            0xF3 => self.indexed_y_read_modify_write(Cpu::isb), //isc(Cpu::indirect_y), // ISC (d),Y ($F3 dd; 8 cycles)
-            0xF7 => self.zero_page_indexed_read_modify_write(self.x, Cpu::isb), //isc(Cpu::zero_page_x), // ISC d,X ($F7 dd; 6 cycles)
-            0xFB => self.absolute_indexed_read_modify_write(self.y, Cpu::isb), //isc(Cpu::absolute_y), // ISC a,Y ($FB aa aa; 7 cycles)
-            0xFF => self.absolute_indexed_read_modify_write(self.x, Cpu::isb), //isc(Cpu::absolute_x), // ISC a,X ($FF aa aa; 7 cycles)
+            0xE3 => self.indexed_x_read_modify_write(Cpu::isb),
+            0xE7 => self.zero_page_read_modify_write(Cpu::isb),
+            0xEF => self.absolute_read_modify_write(Cpu::isb),
+            0xF3 => self.indexed_y_read_modify_write(Cpu::isb),
+            0xF7 => self.zero_page_indexed_read_modify_write(self.x, Cpu::isb),
+            0xFB => self.absolute_indexed_read_modify_write(self.y, Cpu::isb),
+            0xFF => self.absolute_indexed_read_modify_write(self.x, Cpu::isb),
             // JMP - Jump
             0x4C => self.absolute_jmp(), //jmp(Cpu::absolute),
             0x6C => self.indirect_jmp(), //jmp(Cpu::indirect),
             // JSR - Jump to Subroutine
             0x20 => self.jsr(),//jsr(Cpu::absolute),
             // LAX
-            0xA3 => self.indexed_x_read(Cpu::lax), //lax(Cpu::indirect_x),
-            0xA7 => self.zero_page_read(Cpu::lax), //lax(Cpu::zero_page), //LAX d ($A7 dd; 3 cycles)
-            0xAF => self.absolute_read(Cpu::lax), //lax(Cpu::absolute), // LAX a ($AF aa aa; 4 cycles)
-            0xB3 => self.indexed_y_read(Cpu::lax), //lax(Cpu::indirect_y), // LAX (d),Y ($B3 dd; 5 cycles)
-            0xB7 => self.zero_page_indexed_read(self.y, Cpu::lax), //lax(Cpu::zero_page_y), // LAX d,Y ($B7 dd; 4 cycles)
-            0xBF => self.absolute_indexed_read(self.y, Cpu::lax), //lax(Cpu::absolute_y), // LAX a,Y ($BF aa aa; 4 cycles)
+            0xA3 => self.indexed_x_read(Cpu::lax),
+            0xA7 => self.zero_page_read(Cpu::lax),
+            0xAF => self.absolute_read(Cpu::lax),
+            0xB3 => self.indexed_y_read(Cpu::lax),
+            0xB7 => self.zero_page_indexed_read(self.y, Cpu::lax),
+            0xBF => self.absolute_indexed_read(self.y, Cpu::lax),
             // LDA - Load Accumulator
-            0xA9 => self.immediate(Cpu::lda), //lda(Cpu::immediate),
-            0xA5 => self.zero_page_read(Cpu::lda), //lda(Cpu::zero_page),
-            0xB5 => self.zero_page_indexed_read(self.x, Cpu::lda), //lda(Cpu::zero_page_x),
+            0xA9 => self.immediate(Cpu::lda),
+            0xA5 => self.zero_page_read(Cpu::lda),
+            0xB5 => self.zero_page_indexed_read(self.x, Cpu::lda),
             0xAD => self.absolute_read(Cpu::lda), //lda(Cpu::absolute),
-            0xBD => self.absolute_indexed_read(self.x, Cpu::lda), //lda(Cpu::absolute_x),
-            0xB9 => self.absolute_indexed_read(self.y, Cpu::lda), //lda(Cpu::absolute_y),
-            0xA1 => self.indexed_x_read(Cpu::lda), //lda(Cpu::indirect_x),
-            0xB1 => self.indexed_y_read(Cpu::lda), //lda(Cpu::indirect_y),
+            0xBD => self.absolute_indexed_read(self.x, Cpu::lda),
+            0xB9 => self.absolute_indexed_read(self.y, Cpu::lda),
+            0xA1 => self.indexed_x_read(Cpu::lda),
+            0xB1 => self.indexed_y_read(Cpu::lda),
             // LDX - Load X Register
-            0xA2 => self.immediate(Cpu::ldx), //ldx(Cpu::immediate),
-            0xA6 => self.zero_page_read(Cpu::ldx), //ldx(Cpu::zero_page),
-            0xB6 => self.zero_page_indexed_read(self.y, Cpu::ldx), //ldx(Cpu::zero_page_y),
-            0xAE => self.absolute_read(Cpu::ldx), //ldx(Cpu::absolute),
-            0xBE => self.absolute_indexed_read(self.y, Cpu::ldx), //ldx(Cpu::absolute_y),
+            0xA2 => self.immediate(Cpu::ldx),
+            0xA6 => self.zero_page_read(Cpu::ldx),
+            0xB6 => self.zero_page_indexed_read(self.y, Cpu::ldx),
+            0xAE => self.absolute_read(Cpu::ldx),
+            0xBE => self.absolute_indexed_read(self.y, Cpu::ldx),
             // LDY - Load Y Register
-            0xA0 => self.immediate(Cpu::ldy), //ldy(Cpu::immediate),
-            0xA4 => self.zero_page_read(Cpu::ldy), //ldy(Cpu::zero_page),
-            0xB4 => self.zero_page_indexed_read(self.x, Cpu::ldy), //ldy(Cpu::zero_page_x),
-            0xAC => self.absolute_read(Cpu::ldy), //ldy(Cpu::absolute),
-            0xBC => self.absolute_indexed_read(self.x, Cpu::ldy), //ldy(Cpu::absolute_x),
+            0xA0 => self.immediate(Cpu::ldy),
+            0xA4 => self.zero_page_read(Cpu::ldy),
+            0xB4 => self.zero_page_indexed_read(self.x, Cpu::ldy),
+            0xAC => self.absolute_read(Cpu::ldy),
+            0xBC => self.absolute_indexed_read(self.x, Cpu::ldy),
             // LSR - Logical Shift Right
-            0x4A => self.accumulator(Cpu::lsr), //lsr_acc(),
-            0x46 => self.zero_page_read_modify_write(Cpu::lsr), //lsr(Cpu::zero_page),
-            0x56 => self.zero_page_indexed_read_modify_write(self.x, Cpu::lsr), //lsr(Cpu::zero_page_x),
-            0x4E => self.absolute_read_modify_write(Cpu::lsr), //lsr(Cpu::absolute),
-            0x5E => self.absolute_indexed_read_modify_write(self.x, Cpu::lsr), //lsr(Cpu::absolute_x),
+            0x4A => self.accumulator(Cpu::lsr),
+            0x46 => self.zero_page_read_modify_write(Cpu::lsr),
+            0x56 => self.zero_page_indexed_read_modify_write(self.x, Cpu::lsr),
+            0x4E => self.absolute_read_modify_write(Cpu::lsr),
+            0x5E => self.absolute_indexed_read_modify_write(self.x, Cpu::lsr),
             // NOP - No Operation
-            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => self.implied(Cpu::nop), //nop(),
+            0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xEA | 0xFA => self.implied(Cpu::nop),
             // ORA - Logical Inclusive OR
-            0x09 => self.immediate(Cpu::ora), //ora(Cpu::immediate),
-            0x05 => self.zero_page_read(Cpu::ora), //ora(Cpu::zero_page),
-            0x15 => self.zero_page_indexed_read(self.x, Cpu::ora), //ora(Cpu::zero_page_x),
-            0x0D => self.absolute_read(Cpu::ora), //ora(Cpu::absolute),
-            0x1D => self.absolute_indexed_read(self.x, Cpu::ora), //ora(Cpu::absolute_x),
-            0x19 => self.absolute_indexed_read(self.y, Cpu::ora), //ora(Cpu::absolute_y),
-            0x01 => self.indexed_x_read(Cpu::ora), //ora(Cpu::indirect_x),
-            0x11 => self.indexed_y_read(Cpu::ora), //ora(Cpu::indirect_y),
+            0x09 => self.immediate(Cpu::ora),
+            0x05 => self.zero_page_read(Cpu::ora),
+            0x15 => self.zero_page_indexed_read(self.x, Cpu::ora),
+            0x0D => self.absolute_read(Cpu::ora),
+            0x1D => self.absolute_indexed_read(self.x, Cpu::ora),
+            0x19 => self.absolute_indexed_read(self.y, Cpu::ora),
+            0x01 => self.indexed_x_read(Cpu::ora),
+            0x11 => self.indexed_y_read(Cpu::ora),
             // PHA - Push Accumulator
             0x48 => self.pha(),
             // PHP - Push Processor Status
@@ -1084,103 +1084,103 @@ impl Cpu {
             // PLP - Pull Processor Status
             0x28 => self.plp(),
             // RLA
-            0x23 => self.indexed_x_read_modify_write(Cpu::rla), //rla(Cpu::indirect_x), // RLA (d,X) ($23 dd; 8 cycles)
-            0x27 => self.zero_page_read_modify_write(Cpu::rla), //rla(Cpu::zero_page), // RLA d ($27 dd; 5 cycles)
-            0x2F => self.absolute_read_modify_write(Cpu::rla), //rla(Cpu::absolute), // RLA a ($2F aa aa; 6 cycles)
-            0x33 => self.indexed_y_read_modify_write(Cpu::rla), //rla(Cpu::indirect_y), // RLA (d),Y ($33 dd; 8 cycles)
-            0x37 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rla), //rla(Cpu::zero_page_x), // RLA d,X ($37 dd; 6 cycles)
-            0x3B => self.absolute_indexed_read_modify_write(self.y, Cpu::rla), //rla(Cpu::absolute_y), // RLA a,Y ($3B aa aa; 7 cycles)
-            0x3F => self.absolute_indexed_read_modify_write(self.x, Cpu::rla), //rla(Cpu::absolute_x), // RLA a,X ($3F aa aa; 7 cycles)
+            0x23 => self.indexed_x_read_modify_write(Cpu::rla),
+            0x27 => self.zero_page_read_modify_write(Cpu::rla),
+            0x2F => self.absolute_read_modify_write(Cpu::rla),
+            0x33 => self.indexed_y_read_modify_write(Cpu::rla),
+            0x37 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rla),
+            0x3B => self.absolute_indexed_read_modify_write(self.y, Cpu::rla),
+            0x3F => self.absolute_indexed_read_modify_write(self.x, Cpu::rla),
             // ROL - Rotate Left
-            0x2A => self.accumulator(Cpu::rol), //rol_acc(),
-            0x26 => self.zero_page_read_modify_write(Cpu::rol), //rol(Cpu::zero_page),
-            0x36 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rol), //rol(Cpu::zero_page_x),
-            0x2E => self.absolute_read_modify_write(Cpu::rol), //rol(Cpu::absolute),
-            0x3E => self.absolute_indexed_read_modify_write(self.x, Cpu::rol), //rol(Cpu::absolute_x),
+            0x2A => self.accumulator(Cpu::rol),
+            0x26 => self.zero_page_read_modify_write(Cpu::rol),
+            0x36 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rol),
+            0x2E => self.absolute_read_modify_write(Cpu::rol),
+            0x3E => self.absolute_indexed_read_modify_write(self.x, Cpu::rol),
             // ROR - Rotate Right
-            0x6A => self.accumulator(Cpu::ror), //ror_acc(),
-            0x66 => self.zero_page_read_modify_write(Cpu::ror), //ror(Cpu::zero_page),
-            0x76 => self.zero_page_indexed_read_modify_write(self.x, Cpu::ror), //ror(Cpu::zero_page_x),
-            0x6E => self.absolute_read_modify_write(Cpu::ror), //ror(Cpu::absolute),
-            0x7E => self.absolute_indexed_read_modify_write(self.x, Cpu::ror), //ror(Cpu::absolute_x),
+            0x6A => self.accumulator(Cpu::ror),
+            0x66 => self.zero_page_read_modify_write(Cpu::ror),
+            0x76 => self.zero_page_indexed_read_modify_write(self.x, Cpu::ror),
+            0x6E => self.absolute_read_modify_write(Cpu::ror),
+            0x7E => self.absolute_indexed_read_modify_write(self.x, Cpu::ror),
             // RRA
-            0x63 => self.indexed_x_read_modify_write(Cpu::rra), //rra(Cpu::indirect_x), // RRA (d,X) ($63 dd; 8 cycles)
-            0x67 => self.zero_page_read_modify_write(Cpu::rra), //rra(Cpu::zero_page), // RRA d ($67 dd; 5 cycles)
-            0x6F => self.absolute_read_modify_write(Cpu::rra), //rra(Cpu::absolute), // RRA a ($6F aa aa; 6 cycles)
-            0x73 => self.indexed_y_read_modify_write(Cpu::rra), //rra(Cpu::indirect_y), // RRA (d),Y ($73 dd; 8 cycles)
-            0x77 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rra), //rra(Cpu::zero_page_x), // RRA d,X ($77 dd; 6 cycles)
-            0x7B => self.absolute_indexed_read_modify_write(self.y, Cpu::rra), //rra(Cpu::absolute_y), // RRA a,Y ($7B aa aa; 7 cycles)
-            0x7F => self.absolute_indexed_read_modify_write(self.x, Cpu::rra), //rra(Cpu::absolute_x), // RRA a,X ($7F aa aa; 7 cycles)
+            0x63 => self.indexed_x_read_modify_write(Cpu::rra),
+            0x67 => self.zero_page_read_modify_write(Cpu::rra),
+            0x6F => self.absolute_read_modify_write(Cpu::rra),
+            0x73 => self.indexed_y_read_modify_write(Cpu::rra),
+            0x77 => self.zero_page_indexed_read_modify_write(self.x, Cpu::rra),
+            0x7B => self.absolute_indexed_read_modify_write(self.y, Cpu::rra),
+            0x7F => self.absolute_indexed_read_modify_write(self.x, Cpu::rra),
             // RTI - Return from Interrupt
             0x40 => self.rti(),
             // RTS - Return from Subroutine
             0x60 => self.rts(),
             // SAX
-            0x83 => self.indexed_x_write(self.a & self.x), //sax(Cpu::indirect_x), // SAX (d,X) ($83 dd; 6 cycles)
-            0x87 => self.zero_page_write(self.a & self.x), //sax(Cpu::zero_page), // SAX d ($87 dd; 3 cycles)
-            0x8F => self.absolute_write(self.a & self.x), //sax(Cpu::absolute), // SAX a ($8F aa aa; 4 cycles)
-            0x97 => self.zero_page_indexed_write(self.y, self.a & self.x), //sax(Cpu::zero_page_y), // SAX d,Y ($97 dd; 4 cycles)
+            0x83 => self.indexed_x_write(self.a & self.x),
+            0x87 => self.zero_page_write(self.a & self.x),
+            0x8F => self.absolute_write(self.a & self.x),
+            0x97 => self.zero_page_indexed_write(self.y, self.a & self.x),
             // SBC - Subtract with Carry
-            0xE9 | 0xEB => self.immediate(Cpu::sbc), //sbc(Cpu::immediate),
-            0xE5 => self.zero_page_read(Cpu::sbc), //sbc(Cpu::zero_page),
-            0xF5 => self.zero_page_indexed_read(self.x, Cpu::sbc), //sbc(Cpu::zero_page_x),
-            0xED => self.absolute_read(Cpu::sbc), //sbc(Cpu::absolute),
-            0xFD => self.absolute_indexed_read(self.x, Cpu::sbc), //sbc(Cpu::absolute_x),
-            0xF9 => self.absolute_indexed_read(self.y, Cpu::sbc), //sbc(Cpu::absolute_y),
-            0xE1 => self.indexed_x_read(Cpu::sbc), //sbc(Cpu::indirect_x),
-            0xF1 => self.indexed_y_read(Cpu::sbc), //sbc(Cpu::indirect_y),
+            0xE9 | 0xEB => self.immediate(Cpu::sbc),
+            0xE5 => self.zero_page_read(Cpu::sbc),
+            0xF5 => self.zero_page_indexed_read(self.x, Cpu::sbc),
+            0xED => self.absolute_read(Cpu::sbc),
+            0xFD => self.absolute_indexed_read(self.x, Cpu::sbc),
+            0xF9 => self.absolute_indexed_read(self.y, Cpu::sbc),
+            0xE1 => self.indexed_x_read(Cpu::sbc),
+            0xF1 => self.indexed_y_read(Cpu::sbc),
             // SEC - Set Carry Flag
-            0x38 => self.implied(Cpu::sec), //sec(),
+            0x38 => self.implied(Cpu::sec),
             // SED - Set Decimal Flag
-            0xF8 => self.implied(Cpu::sed), //sed(),
+            0xF8 => self.implied(Cpu::sed),
             // SEI - Set Interrupt Disable
-            0x78 => self.implied(Cpu::sei), //sei(),
+            0x78 => self.implied(Cpu::sei),
             // SLO
-            0x03 => self.indexed_x_read_modify_write(Cpu::slo), //slo(Cpu::indirect_x), // SLO (d,X) ($03 dd; 8 cycles)
-            0x07 => self.zero_page_read_modify_write(Cpu::slo), //slo(Cpu::zero_page), // SLO d ($07 dd; 5 cycles)
-            0x0F => self.absolute_read_modify_write(Cpu::slo), //slo(Cpu::absolute), // SLO a ($0F aa aa; 6 cycles)
-            0x13 => self.indexed_y_read_modify_write(Cpu::slo), //slo(Cpu::indirect_y), // SLO (d),Y ($13 dd; 8 cycles)
-            0x17 => self.zero_page_indexed_read_modify_write(self.x, Cpu::slo), //slo(Cpu::zero_page_x), // SLO d,X ($17 dd; 6 cycles)
-            0x1B => self.absolute_indexed_read_modify_write(self.y, Cpu::slo), //slo(Cpu::absolute_y), // SLO a,Y ($1B aa aa; 7 cycles)
-            0x1F => self.absolute_indexed_read_modify_write(self.x, Cpu::slo), //slo(Cpu::absolute_x), // SLO a,X ($1F aa aa; 7 cycles)
+            0x03 => self.indexed_x_read_modify_write(Cpu::slo),
+            0x07 => self.zero_page_read_modify_write(Cpu::slo),
+            0x0F => self.absolute_read_modify_write(Cpu::slo),
+            0x13 => self.indexed_y_read_modify_write(Cpu::slo),
+            0x17 => self.zero_page_indexed_read_modify_write(self.x, Cpu::slo),
+            0x1B => self.absolute_indexed_read_modify_write(self.y, Cpu::slo),
+            0x1F => self.absolute_indexed_read_modify_write(self.x, Cpu::slo),
             // SRE
-            0x43 => self.indexed_x_read_modify_write(Cpu::sre), //sre(Cpu::indirect_x), // SRE (d,X) ($43 dd; 8 cycles)
-            0x47 => self.zero_page_read_modify_write(Cpu::sre), //sre(Cpu::zero_page), // SRE d ($47 dd; 5 cycles)
-            0x4f => self.absolute_read_modify_write(Cpu::sre), //sre(Cpu::absolute), // SRE a ($4F aa aa; 6 cycles)
-            0x53 => self.indexed_y_read_modify_write(Cpu::sre), //sre(Cpu::indirect_y), // SRE (d),Y ($53 dd; 8 cycles)
-            0x57 => self.zero_page_indexed_read_modify_write(self.x, Cpu::sre), //sre(Cpu::zero_page_x), // SRE d,X ($57 dd; 6 cycles)
-            0x5B => self.absolute_indexed_read_modify_write(self.y, Cpu::sre), //sre(Cpu::absolute_y), // SRE a,Y ($5B aa aa; 7 cycles)
-            0x5F => self.absolute_indexed_read_modify_write(self.x, Cpu::sre), //sre(Cpu::absolute_x), // SRE a,X ($5F aa aa; 7 cycles)
+            0x43 => self.indexed_x_read_modify_write(Cpu::sre),
+            0x47 => self.zero_page_read_modify_write(Cpu::sre),
+            0x4f => self.absolute_read_modify_write(Cpu::sre),
+            0x53 => self.indexed_y_read_modify_write(Cpu::sre),
+            0x57 => self.zero_page_indexed_read_modify_write(self.x, Cpu::sre),
+            0x5B => self.absolute_indexed_read_modify_write(self.y, Cpu::sre),
+            0x5F => self.absolute_indexed_read_modify_write(self.x, Cpu::sre),
             // STA - Store Accumulator
-            0x85 => self.zero_page_write(self.a), //sta(Cpu::zero_page),
-            0x95 => self.zero_page_indexed_write(self.x, self.a), //sta(Cpu::zero_page_x),
-            0x8D => self.absolute_write(self.a), //sta(Cpu::absolute),
-            0x9D => self.absolute_indexed_write(self.x, self.a), //sta(Cpu::absolute_x),
-            0x99 => self.absolute_indexed_write(self.y, self.a), //sta(Cpu::absolute_y),
-            0x81 => self.indexed_x_write(self.a), //sta(Cpu::indirect_x),
-            0x91 => self.indexed_y_write(self.a), //sta(Cpu::indirect_y),
+            0x85 => self.zero_page_write(self.a),
+            0x95 => self.zero_page_indexed_write(self.x, self.a),
+            0x8D => self.absolute_write(self.a),
+            0x9D => self.absolute_indexed_write(self.x, self.a),
+            0x99 => self.absolute_indexed_write(self.y, self.a),
+            0x81 => self.indexed_x_write(self.a),
+            0x91 => self.indexed_y_write(self.a),
             // STX - Store X Register
-            0x86 => self.zero_page_write(self.x), //stx(Cpu::zero_page),
-            0x96 => self.zero_page_indexed_write(self.y, self.x), //stx(Cpu::zero_page_y),
-            0x8E => self.absolute_write(self.x), //stx(Cpu::absolute),
+            0x86 => self.zero_page_write(self.x),
+            0x96 => self.zero_page_indexed_write(self.y, self.x),
+            0x8E => self.absolute_write(self.x),
             // STY - Store Y Register
-            0x84 => self.zero_page_write(self.y), //sty(Cpu::zero_page),
-            0x94 => self.zero_page_indexed_write(self.x, self.y), //sty(Cpu::zero_page_x),
-            0x8C => self.absolute_write(self.y), //sty(Cpu::absolute),
+            0x84 => self.zero_page_write(self.y),
+            0x94 => self.zero_page_indexed_write(self.x, self.y),
+            0x8C => self.absolute_write(self.y),
             // SKB
-            0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.immediate(Cpu::skb),//skb(Cpu::immediate),
+            0x80 | 0x82 | 0x89 | 0xC2 | 0xE2 => self.immediate(Cpu::skb),
             // TAX - Transfer Accumulator to X
-            0xAA => self.implied(Cpu::tax), //tax(),
+            0xAA => self.implied(Cpu::tax),
             // TAY - Transfer Accumulator to Y
-            0xA8 => self.implied(Cpu::tay), // tay(),
+            0xA8 => self.implied(Cpu::tay),
             // TSX - Transfer Stack Pointer to X
-            0xBA => self.implied(Cpu::tsx), //tsx(),
+            0xBA => self.implied(Cpu::tsx),
             // TXA - Transfer X to Accumulator
-            0x8A => self.implied(Cpu::txa), //txa(),
+            0x8A => self.implied(Cpu::txa),
             // TXS - Transfer X to Stack Pointer
-            0x9A => self.implied(Cpu::txs), //txs(),
+            0x9A => self.implied(Cpu::txs),
             // TYA - Transfer Y to Accumulator
-            0x98 => self.implied(Cpu::tya), //tya(),
+            0x98 => self.implied(Cpu::tya),
             _ => {},
         }
     }
