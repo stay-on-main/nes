@@ -85,7 +85,7 @@ impl Bus {
     */
     pub fn new() -> Self {
         Self {
-            rom: Rom::new("C:/github/nes/nestest.nes"),
+            rom: Rom::new("C:/github/nes/Super_Mario_Bros_(E).nes"),
             ram: [0u8; 2048],
             clk: 7,
         }

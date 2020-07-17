@@ -1184,8 +1184,9 @@ impl Cpu {
         }
     }
 
-    pub fn new(bus: Bus) -> Self {
-        let start_addr = 0xC000;//bus.read_u16(0xFFFC);
+    pub fn new(mut bus: Bus) -> Self {
+        let mut start_addr = bus.read(0xFFFC) as u16;//0xC000;//bus.read_u16(0xFFFC);
+        start_addr |= (bus.read(0xFFFD) as u16) << 8;
         //print!("start: 0x{:x}", start_addr);
         Self {
             a: 0,

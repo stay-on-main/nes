@@ -10,10 +10,24 @@ pub struct Rom {
 
 impl Rom {
     pub fn new(file: &str) -> Self {
+        println!("Load nes file: {}", file);
         let mut file = File::open(file).unwrap();
-        file.seek(SeekFrom::Start(16)).unwrap();
+        let mut header = [0u8; 16];
+        file.seek(SeekFrom::Start(0)).unwrap();
+        file.read(&mut header).unwrap();
+        let prg_rom_size_16k = header[4];
+
         let mut prg_rom = [0u8; 32768];
-        file.read(&mut prg_rom[(32768 / 2)..]).unwrap();
+
+        match prg_rom_size_16k {
+            1 => {
+                file.read(&mut prg_rom[(32768 / 2)..]).unwrap();
+            },
+            2 => {
+                file.read(&mut prg_rom).unwrap();
+            },
+            _ => todo!(),
+        }
         //println!("{:x}", prg_rom[0xfffc-0x8000]);
         Self {
             prg_rom
