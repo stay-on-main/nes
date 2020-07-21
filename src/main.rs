@@ -5,6 +5,8 @@ mod nes;
 mod cpu;
 use cpu::Cpu;
 
+pub mod ppu;
+
 fn main() {
     let bus = Bus::new();
     let mut cpu = Cpu::new(bus);

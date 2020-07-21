@@ -1,9 +1,11 @@
 use super::nes::{Rom};
+use super::ppu::{Ppu};
 
 pub struct Bus {
     ram: [u8; 2048],
     rom: Rom,
     pub clk: u32,
+    ppu: Ppu,
 }
 
 impl Bus {
@@ -17,8 +19,7 @@ impl Bus {
         }
         else if addr <= 0x3FFF {
             // Registers Video
-            let addr = 0x2000 + addr & 0b111;
-            0x0
+            self.ppu.read(addr)
         }
         else if addr <= 0x4017 {
             // Registers Audio & DMA & I/O
@@ -75,19 +76,18 @@ impl Bus {
 
     pub fn clock(&mut self) {
         self.clk += 1;
+
+        for _ in 0..3 {
+            self.ppu.clock();
+        }
     }
-    /*
-    pub fn read_u16(&self, addr: u16) -> u16 {
-        let l = self.read_u8(addr);
-        let h = self.read_u8(addr + 1);
-        (l as u16) | ((h as u16) << 8)
-    }
-    */
+
     pub fn new() -> Self {
         Self {
             rom: Rom::new("C:/github/nes/Super_Mario_Bros_(E).nes"),
             ram: [0u8; 2048],
             clk: 7,
+            ppu: Ppu::new(),
         }
     }
 }
