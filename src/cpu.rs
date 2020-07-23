@@ -893,14 +893,19 @@ impl Cpu {
         byte
     }
     //================================================================
-    pub fn clock(&mut self) {
-        print!("{:02X}  ", self.pc);
-        print!("A:{:02X} ", self.a);
-        print!("X:{:02X} ", self.x);
-        print!("Y:{:02X} ", self.y);
-        print!("P:{:02X} ", self.p);
-        print!("SP:{:02X}  ", self.s);
-        println!("CYC:{}", self.bus.clk);
+    pub fn clock(&mut self, start_clock: u32) {
+        if self.bus.clk > start_clock {
+            print!("{:02X}  ", self.pc);
+            print!("A:{:02X} ", self.a);
+            print!("X:{:02X} ", self.x);
+            print!("Y:{:02X} ", self.y);
+            print!("P:{:02X} ", self.p);
+            print!("SP:{:02X}  ", self.s);
+            print!("CYC:{} ", self.bus.clk);
+            
+            print!("PIX:{} LINE:{} ", self.bus.ppu.cycle, self.bus.ppu.scanline);
+            println!();
+        }
         //self.print_state();
 
         let instruction = self.fetch_u8();

@@ -5,12 +5,12 @@ pub struct Bus {
     ram: [u8; 2048],
     rom: Rom,
     pub clk: u32,
-    ppu: Ppu,
+    pub ppu: Ppu,
 }
 
 impl Bus {
     pub fn read(&mut self, addr: u16) -> u8 {
-        self.clk += 1;
+        self.clock();
 
         if addr <= 0x1FFF {
             // RAM
@@ -44,17 +44,25 @@ impl Bus {
     }
 
     pub fn write(&mut self, addr: u16, val: u8) {
-        self.clk += 1;
+        self.clock();
 
         if addr <= 0x1FFF {
             // RAM
             let addr = addr & 0x7FF;
             self.ram[addr as usize] = val;
         } else if addr <= 0x3FFF{
+            self.ppu.write(addr, val);
+            //println!("Write: 0x{:02x} to Video 0x{:04x}", val, addr);
+            //todo!();
             //println!("write video ram");
         } else if addr <= 0x4017 {
             // Registers Audio & DMA & I/O
             //println!("write audio ram");
+            println!("Write: 0x{:02x} to Audio & DMA ram 0x{:04x}", val, addr);
+            
+            if addr == 0x4017 {
+                todo!();
+            }
         }
         else if addr <= 0x4FFF {
             // Not used

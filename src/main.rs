@@ -11,7 +11,10 @@ fn main() {
     let bus = Bus::new();
     let mut cpu = Cpu::new(bus);
 
-    for _ in 0..8991 {
-        cpu.clock();
+    let start_clock = 43754;
+    let clock_count = 100;
+
+    for _ in 0..start_clock + clock_count {
+        cpu.clock(start_clock);
     }
 }
