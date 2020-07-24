@@ -589,6 +589,10 @@ impl Cpu {
         self.pc |= low as u16;
     }
 
+    fn log_instruction(&self, instr: &str) {
+        print!("{}  ", instr);
+    }
+
     //================================================================
     fn adc(&mut self, byte: u8) {
         let mut temp = (self.a as u16) + (byte as u16);
@@ -1204,4 +1208,3 @@ impl Cpu {
         }
     }
 }
-
